@@ -46,6 +46,7 @@ struct InstellingenScherm: View {
                     }
 
                     sectie("Over") {
+                        logoKop
                         kaart {
                             overRij("Versie", versie)
                             Divider().overlay(Color.line)
@@ -62,6 +63,25 @@ struct InstellingenScherm: View {
                 .padding(.bottom, 24)
             }
         }
+    }
+
+    /// Het logo met de naam van de app eronder.
+    private var logoKop: some View {
+        VStack(spacing: 8) {
+            Image("Logo")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: KaartStijl.logoGrootte, height: KaartStijl.logoGrootte)
+                .clipShape(RoundedRectangle(cornerRadius: KaartStijl.logoGrootte * KaartStijl.logoHoekVerhouding, style: .continuous))
+                .zachteSchaduw()
+                .accessibilityHidden(true)
+            Text("Bankjesvinder")
+                .font(.display(20))
+                .foregroundStyle(Color.ink)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 4)
     }
 
     private var versie: String {

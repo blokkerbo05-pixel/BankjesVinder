@@ -119,6 +119,8 @@ enum KaartStijl {
     static let themaBolGrootte: CGFloat      = 40   // kleurbolletje van een thema (uitgeklapt)
     static let themaStipKlein: CGFloat       = 12   // klein bolletje in de ingeklapte regel
     static let binnenkortLabelGrootte: CGFloat = 11  // klein "binnenkort"-label
+    static let logoGrootte: CGFloat          = 64   // logo bovenaan "Over"
+    static let logoHoekVerhouding: CGFloat   = 0.2237   // afronding van een iPhone-icoon (deel van de breedte)
 
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
