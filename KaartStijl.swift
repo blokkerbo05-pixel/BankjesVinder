@@ -59,6 +59,18 @@ enum KaartStijl {
     /// Zoveel seconden wachten op één server voordat de volgende erbij wordt gevraagd.
     static let serverStaffelSeconden: Double = 3
 
+    // MARK: "Dichtbij"-paneel onderaan de kaart (compact en halfdoorzichtig)
+    static let dichtbijPaneelAchtergrond: Material = .ultraThinMaterial   // kaart schemert erdoorheen
+    static let dichtbijTegelAchtergrond = Color.surface.opacity(0.55)
+    static let dichtbijTegelRand        = Color.line
+    static let dichtbijTegelBreedte: CGFloat    = 128
+    static let dichtbijTegelPadding: CGFloat    = 8
+    static let dichtbijTegelHoek: CGFloat       = 10
+    static let dichtbijNaamGrootte: CGFloat     = 12   // naam van het bankje
+    static let dichtbijInfoGrootte: CGFloat     = 11   // afstand en looptijd
+    static let dichtbijKopGrootte: CGFloat      = 11   // het woord DICHTBIJ
+    static let dichtbijPaneelPadding: CGFloat   = 6    // ruimte boven en onder in het paneel
+
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
     static let tegelMaxDagen: Double = 30

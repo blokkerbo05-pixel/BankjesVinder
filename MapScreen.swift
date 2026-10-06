@@ -237,14 +237,14 @@ struct MapScreen: View {
         } else {
             VStack(spacing: 12) {
                 if !nearest.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("DICHTBIJ")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: KaartStijl.dichtbijKopGrootte, weight: .semibold))
                             .tracking(0.8)
                             .foregroundStyle(Color.muted)
                             .padding(.horizontal, 16)
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
+                            HStack(spacing: 8) {
                                 ForEach(nearest) { bench in
                                     nearbyTile(bench)
                                 }
@@ -252,8 +252,8 @@ struct MapScreen: View {
                             .padding(.horizontal, 16)
                         }
                     }
-                    .padding(.vertical, 10)
-                    .background(Color.appBg.opacity(0.92))
+                    .padding(.vertical, KaartStijl.dichtbijPaneelPadding)
+                    .background(KaartStijl.dichtbijPaneelAchtergrond)
                 }
                 AddBenchButton { showAdd = true }
             }
@@ -265,25 +265,24 @@ struct MapScreen: View {
         Button {
             select(bench)
         } label: {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(bench.name)
-                    .font(.cardTitle(16))
+                    .font(.system(size: KaartStijl.dichtbijNaamGrootte, weight: .semibold))
                     .foregroundStyle(Color.ink)
                     .lineLimit(1)
                 if let d = bench.distance(from: location.location) {
-                    Text(formatDistance(d))
-                        .font(.display(22))
+                    Text("\(formatDistance(d)) · \(walkingMinutes(d))")
+                        .font(.system(size: KaartStijl.dichtbijInfoGrootte))
                         .monospacedDigit()
                         .foregroundStyle(bench.source == .eigen ? Color.wood : Color.leaf)
-                    Text(walkingMinutes(d))
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
-            .frame(width: 130, alignment: .leading)
-            .padding(12)
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.surface))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line, lineWidth: 1.5))
+            .frame(width: KaartStijl.dichtbijTegelBreedte, alignment: .leading)
+            .padding(KaartStijl.dichtbijTegelPadding)
+            .background(RoundedRectangle(cornerRadius: KaartStijl.dichtbijTegelHoek).fill(KaartStijl.dichtbijTegelAchtergrond))
+            .overlay(RoundedRectangle(cornerRadius: KaartStijl.dichtbijTegelHoek).stroke(KaartStijl.dichtbijTegelRand, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
