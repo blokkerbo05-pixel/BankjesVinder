@@ -13,13 +13,24 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - path: .
+        excludes:
+          - ".git/**"
+          - ".github/**"
+          - "build/**"
+          - "Payload/**"
+          - "Bankjesvinder.xcodeproj/**"
+          - "*.yml"
+          - "*.md"
+          - "*.json"
+          - "*.png"
+          - "*.ipa"
+          - "Info.plist"
     scheme: {}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: nl.bo.bankjesvinder
         TARGETED_DEVICE_FAMILY: "1"
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: Info.plist
       properties:
