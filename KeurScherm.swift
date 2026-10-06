@@ -150,7 +150,7 @@ struct KeurScherm: View {
     private func vlieg(goed: Bool) {
         guard !vliegtWeg, !stapel.isEmpty else { return }
         vliegtWeg = true
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptiek.licht()
         withAnimation(.easeIn(duration: KaartStijl.keurWegvliegSeconden)) {
             slepen = CGSize(width: goed ? KaartStijl.keurWegvliegAfstand : -KaartStijl.keurWegvliegAfstand,
                             height: slepen.height)

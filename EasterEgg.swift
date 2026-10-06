@@ -33,7 +33,7 @@ final class VerrassingStatus: ObservableObject {
     }
 
     private func toonFoto() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        Haptiek.licht()
         withAnimation(.easeIn(duration: Verrassing.fadeIn)) { toon = true }
         Task {
             try? await Task.sleep(nanoseconds: UInt64((Verrassing.fadeIn + Verrassing.toonSeconden) * 1_000_000_000))

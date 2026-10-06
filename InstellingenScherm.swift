@@ -4,6 +4,7 @@ import SwiftUI
 struct InstellingenScherm: View {
     @EnvironmentObject var thema: ThemaStore
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(Haptiek.sleutel) private var trillingenAan = true
 
     var body: some View {
         ZStack {
@@ -27,6 +28,24 @@ struct InstellingenScherm: View {
                             ForEach(Weergave.allCases) { Text($0.titel).tag($0) }
                         }
                         .pickerStyle(.segmented)
+                    }
+
+                    sectie("Trillingen") {
+                        Toggle(isOn: $trillingenAan) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Trillingen")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color.ink)
+                                Text("Een kleine tik bij keuzes in de app")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Color.muted)
+                            }
+                        }
+                        .tint(Color.leaf)
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
+                        .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
+                        .onChange(of: trillingenAan) { Haptiek.licht() }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -52,6 +71,7 @@ struct InstellingenScherm: View {
         let palet = colorScheme == .dark ? item.donker : item.licht
         let gekozen = thema.themaID == item.id
         return Button {
+            Haptiek.selectie()
             thema.themaID = item.id
         } label: {
             HStack(spacing: 10) {
