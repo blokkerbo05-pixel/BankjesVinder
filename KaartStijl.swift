@@ -84,6 +84,12 @@ enum KaartStijl {
     static let keurOngedaanKleur                = Color.muted    // knop "ongedaan maken"
     static let keurKnopGrootte: CGFloat         = 62    // de grote ronde knoppen (goed / niet goed)
     static let keurKleineKnopGrootte: CGFloat   = 46    // de kleine knop (ongedaan maken)
+    static let keurDrempelWeg: CGFloat         = 110    // zo ver (in punten) slepen en de kaart vliegt weg
+    static let keurDraaiHoek: Double           = 14     // graden dat de kaart meedraait bij de drempel
+    static let keurWegvliegAfstand: CGFloat    = 650    // hoe ver de kaart wegvliegt
+    static let keurWegvliegSeconden: Double    = 0.25
+    static let keurStempelGrootte: CGFloat     = 22     // tekst van de stempel (GOED BANKJE / GEEN GOED BANKJE)
+    static let keurStempelRand: CGFloat        = 3
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
 

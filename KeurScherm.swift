@@ -10,6 +10,9 @@ struct KeurScherm: View {
 
     /// De bankjes die nog gekeurd moeten worden; het eerste staat bovenaan.
     @State private var stapel: [Bench] = []
+    /// Hoever de bovenste kaart op dit moment is versleept.
+    @State private var slepen: CGSize = .zero
+    @State private var vliegtWeg = false
 
     var body: some View {
         ZStack {
@@ -54,12 +57,16 @@ struct KeurScherm: View {
         ZStack {
             // De bovenste kaart ligt voor; de volgende steken er een beetje onder uit.
             ForEach(Array(stapel.prefix(KaartStijl.keurKaartenZichtbaar).enumerated().reversed()), id: \.element.id) { item in
+                let isBovenste = item.offset == 0
                 KeurKaart(bench: item.element,
                           afstand: item.element.distance(from: location.location),
-                          aantalStemmen: keur.aantalStemmen(for: item.element.id))
+                          aantalStemmen: keur.aantalStemmen(for: item.element.id),
+                          stempel: isBovenste ? voortgang : 0)
                     .scaleEffect(1 - 0.04 * CGFloat(item.offset))
-                    .offset(y: 12 * CGFloat(item.offset))
-                    .allowsHitTesting(item.offset == 0)
+                    .offset(x: isBovenste ? slepen.width : 0,
+                            y: 12 * CGFloat(item.offset) + (isBovenste ? slepen.height * 0.3 : 0))
+                    .rotationEffect(.degrees(isBovenste ? draaiing : 0))
+                    .gesture(sleepGebaar, including: isBovenste ? .all : .none)
             }
         }
         .padding(.bottom, 14)
@@ -69,13 +76,13 @@ struct KeurScherm: View {
     private var knoppen: some View {
         HStack(spacing: 28) {
             rondeKnop("xmark", kleur: KaartStijl.keurSlechtKleur, grootte: KaartStijl.keurKnopGrootte,
-                      label: "Geen goed bankje") { stem(goed: false) }
+                      label: "Geen goed bankje") { vlieg(goed: false) }
             rondeKnop("arrow.uturn.backward", kleur: KaartStijl.keurOngedaanKleur, grootte: KaartStijl.keurKleineKnopGrootte,
                       label: "Laatste stem ongedaan maken") { maakOngedaan() }
                 .opacity(keur.kanOngedaanMaken ? 1 : 0.35)
                 .disabled(!keur.kanOngedaanMaken)
             rondeKnop("checkmark", kleur: KaartStijl.keurGoedKleur, grootte: KaartStijl.keurKnopGrootte,
-                      label: "Goed bankje") { stem(goed: true) }
+                      label: "Goed bankje") { vlieg(goed: true) }
         }
     }
 
@@ -113,6 +120,51 @@ struct KeurScherm: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: Slepen en wegvliegen
+
+    /// -1 (helemaal naar links) tot 1 (helemaal naar rechts); bij 1 is de drempel gehaald.
+    private var voortgang: Double {
+        max(-1, min(1, Double(slepen.width / KaartStijl.keurDrempelWeg)))
+    }
+
+    private var draaiing: Double { voortgang * KaartStijl.keurDraaiHoek }
+
+    private var sleepGebaar: some Gesture {
+        DragGesture()
+            .onChanged { waarde in
+                guard !vliegtWeg else { return }
+                slepen = waarde.translation
+            }
+            .onEnded { waarde in
+                guard !vliegtWeg else { return }
+                if abs(waarde.translation.width) > KaartStijl.keurDrempelWeg {
+                    vlieg(goed: waarde.translation.width > 0)
+                } else {
+                    // Niet ver genoeg: terugveren.
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { slepen = .zero }
+                }
+            }
+    }
+
+    /// Laat de bovenste kaart wegvliegen (links of rechts) en brengt daarna de stem uit.
+    private func vlieg(goed: Bool) {
+        guard !vliegtWeg, !stapel.isEmpty else { return }
+        vliegtWeg = true
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeIn(duration: KaartStijl.keurWegvliegSeconden)) {
+            slepen = CGSize(width: goed ? KaartStijl.keurWegvliegAfstand : -KaartStijl.keurWegvliegAfstand,
+                            height: slepen.height)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + KaartStijl.keurWegvliegSeconden) {
+            stem(goed: goed)
+            // De volgende kaart staat al klaar: zonder animatie terug naar het midden.
+            var zonderAnimatie = Transaction()
+            zonderAnimatie.disablesAnimations = true
+            withTransaction(zonderAnimatie) { slepen = .zero }
+            vliegtWeg = false
+        }
+    }
+
     // MARK: Acties
 
     private func stem(goed: Bool) {
@@ -121,7 +173,7 @@ struct KeurScherm: View {
     }
 
     private func maakOngedaan() {
-        guard let id = keur.maakLaatsteStemOngedaan(),
+        guard !vliegtWeg, let id = keur.maakLaatsteStemOngedaan(),
               let bench = store.all.first(where: { $0.id == id }) else { return }
         refresh(vooraan: bench)   // dat bankje komt weer bovenaan
     }
@@ -158,6 +210,8 @@ struct KeurKaart: View {
     let bench: Bench
     let afstand: CLLocationDistance?
     let aantalStemmen: Int
+    /// -1 tot 1: hoe ver de kaart naar links (niet goed) of rechts (goed) is gesleept; bepaalt de stempel.
+    var stempel: Double = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -198,7 +252,27 @@ struct KeurKaart: View {
         .background(KaartStijl.keurKaartAchtergrond)
         .clipShape(RoundedRectangle(cornerRadius: KaartStijl.keurKaartHoek))
         .overlay(RoundedRectangle(cornerRadius: KaartStijl.keurKaartHoek).stroke(KaartStijl.keurKaartRand, lineWidth: 1.5))
+        .overlay(alignment: .topLeading) {
+            stempelLabel("GOED BANKJE", kleur: KaartStijl.keurGoedKleur, hoek: -14)
+                .opacity(max(0, stempel))
+        }
+        .overlay(alignment: .topTrailing) {
+            stempelLabel("GEEN GOED BANKJE", kleur: KaartStijl.keurSlechtKleur, hoek: 14)
+                .opacity(max(0, -stempel))
+        }
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+    }
+
+    private func stempelLabel(_ tekst: String, kleur: Color, hoek: Double) -> some View {
+        Text(tekst)
+            .font(.system(size: KaartStijl.keurStempelGrootte, weight: .heavy))
+            .tracking(1)
+            .foregroundStyle(kleur)
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(RoundedRectangle(cornerRadius: 8).fill(Color.surface.opacity(0.85)))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(kleur, lineWidth: KaartStijl.keurStempelRand))
+            .rotationEffect(.degrees(hoek))
+            .padding(22)
     }
 }
 
