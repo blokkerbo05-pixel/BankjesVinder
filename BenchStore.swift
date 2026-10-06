@@ -9,6 +9,10 @@ import UIKit
 final class BenchStore: ObservableObject {
     @Published private(set) var own: [Bench] = []
     @Published private(set) var osm: [Bench] = []
+    /// Goedgekeurde bankjes van andere gebruikers.
+    @Published private(set) var gedeeld: [Bench] = []
+    /// Bankjes van anderen die nog beoordeeld moeten worden (alleen te zien in de Keuren-tab).
+    @Published private(set) var keurKandidaten: [Bench] = []
     @Published private(set) var isLoadingOSM = false
     @Published var osmError: String?
     /// Wordt hoger telkens als er een foto is toegevoegd of gewijzigd, zodat schermen hem opnieuw laden.
@@ -37,7 +41,21 @@ final class BenchStore: ObservableObject {
     private let cacheMaxAge: TimeInterval = 7 * 24 * 3600   // na een week opnieuw ophalen
     private let retryAfterFailure: TimeInterval = 20
 
-    var all: [Bench] { toonAlle ? own + osm : own }
+    var all: [Bench] { toonAlle ? own + gedeeld + osm : own }
+    /// Alles wat in de Keuren-tab beoordeeld kan worden.
+    var keurLijst: [Bench] { toonAlle ? all + keurKandidaten : own }
+
+    /// Wordt door de app ingesteld; hiermee tonen we meldingen (bijv. "Geen internet").
+    weak var account: AccountStore?
+    private var gebruiker: UUID?
+    /// Bankjes die nog online gezet moeten worden (bijv. net toegevoegd, of van vóór het inloggen).
+    private var wachtOpUpload: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "bankjesWachtOpUpload") ?? [])
+    private var isSynchroniseren = false
+
+    private var gedeeldURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("gedeelde-bankjes.json")
+    }
 
     private var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -46,6 +64,8 @@ final class BenchStore: ObservableObject {
 
     init() {
         load()
+        if let data = try? Data(contentsOf: gedeeldURL),
+           let list = try? JSONDecoder().decode([Bench].self, from: data) { gedeeld = list }
         loadTileCache()
     }
 
@@ -63,17 +83,137 @@ final class BenchStore: ObservableObject {
     func add(_ bench: Bench) {
         own.insert(bench, at: 0)
         save()
+        zetInWachtrij(bench.id)
     }
 
     /// Bewaart een foto bij een eigen bankje (verkleind) en laat schermen verversen.
     func bewaarFoto(_ image: UIImage, voor bench: Bench) {
-        if BankjesFotos.bewaar(image, voor: bench.id) { fotoVersie += 1 }
+        guard BankjesFotos.bewaar(image, voor: bench.id) else { return }
+        fotoVersie += 1
+        zetInWachtrij(bench.id)   // de nieuwe foto gaat ook online
     }
 
+    /// Verwijdert een eigen bankje. Staat het online, dan moet er internet zijn.
     func delete(_ bench: Bench) {
+        guard bench.source == .eigen else { return }
+        guard gebruiker != nil else { verwijderLokaal(bench); return }
+        guard Netwerk.gedeeld.isOnline else {
+            account?.melding = Netwerk.geenInternet
+            return
+        }
+        Task {
+            do {
+                try await ServerBankjes.verwijder(bench)
+                verwijderLokaal(bench)
+            } catch {
+                account?.melding = Netwerk.melding(voor: error, standaard: "Verwijderen lukte niet. Probeer het opnieuw.")
+            }
+        }
+    }
+
+    private func verwijderLokaal(_ bench: Bench) {
         own.removeAll { $0.id == bench.id }
+        wachtOpUpload.remove(bench.id)
+        bewaarWachtrij()
         BankjesFotos.verwijder(voor: bench.id)
         save()
+    }
+
+    // MARK: - Online (Supabase)
+
+    private func bewaarWachtrij() {
+        UserDefaults.standard.set(Array(wachtOpUpload), forKey: "bankjesWachtOpUpload")
+    }
+
+    private func zetInWachtrij(_ id: String) {
+        wachtOpUpload.insert(id)
+        bewaarWachtrij()
+        Task { await ververs() }
+    }
+
+    /// Wordt aangeroepen als je inlogt of uitlogt.
+    func accountGewijzigd(_ nieuw: UUID?) {
+        let oud = gebruiker
+        gebruiker = nieuw
+        if let nieuw {
+            // Eenmalig: bankjes die al op deze iPhone stonden (van vóór het inloggen) gaan mee naar je account.
+            let sleutel = "bankjesMigratie-\(nieuw.uuidString)"
+            if !UserDefaults.standard.bool(forKey: sleutel) {
+                wachtOpUpload.formUnion(own.map(\.id))
+                bewaarWachtrij()
+                UserDefaults.standard.set(true, forKey: sleutel)
+            }
+        } else if oud != nil {
+            // Uitgelogd: je eigen bankjes verdwijnen van dit scherm (ze staan veilig online).
+            own = own.filter { wachtOpUpload.contains($0.id) }
+            save()
+        }
+        Task { await ververs() }
+    }
+
+    /// Zet wachtende bankjes online en haalt daarna de bankjes van de database op.
+    /// Mislukt het (bijv. geen internet), dan blijft alles zoals het was.
+    func ververs() async {
+        guard !isSynchroniseren else { return }
+        isSynchroniseren = true
+        defer { isSynchroniseren = false }
+
+        await zetWachtendeOnline()
+        do {
+            let rijen = try await ServerBankjes.haalBankjesOp()
+            let statussen = try await ServerBankjes.haalStatussenOp()
+            let goedgekeurd = Set(statussen.filter { $0.status == "goedgekeurd" }.map(\.benchID))
+            let afgekeurd = Set(statussen.filter { $0.status == "afgekeurd" }.map(\.benchID))
+
+            var mijn: [Bench] = []
+            var anderen: [Bench] = []
+            var kandidaten: [Bench] = []
+            for rij in rijen {
+                let id = rij.id.uuidString.lowercased()
+                if let gebruiker, rij.createdBy == gebruiker {
+                    mijn.append(rij.alsBankje(bron: .eigen))
+                } else if gebruiker == nil || goedgekeurd.contains(id) {
+                    anderen.append(rij.alsBankje(bron: .gedeeld))
+                } else if !afgekeurd.contains(id) {
+                    kandidaten.append(rij.alsBankje(bron: .gedeeld))
+                }
+            }
+            if gebruiker != nil {
+                // Wat nog niet online staat blijft zichtbaar.
+                let online = Set(mijn.map(\.id))
+                let wachtend = own.filter { wachtOpUpload.contains($0.id) && !online.contains($0.id) }
+                own = (wachtend + mijn).sorted { $0.createdAt > $1.createdAt }
+                save()
+            }
+            gedeeld = anderen
+            keurKandidaten = kandidaten
+            if let data = try? JSONEncoder().encode(anderen) { try? data.write(to: gedeeldURL, options: .atomic) }
+        } catch {
+            // Stil: de bewaarde bankjes blijven staan.
+        }
+    }
+
+    private func zetWachtendeOnline() async {
+        guard let gebruiker else { return }
+        for id in wachtOpUpload {
+            guard let bench = own.first(where: { $0.id == id }) else {
+                wachtOpUpload.remove(id)
+                bewaarWachtrij()
+                continue
+            }
+            do {
+                let pad = try await ServerBankjes.zetOnline(bench, gebruiker: gebruiker)
+                if let index = own.firstIndex(where: { $0.id == id }) { own[index].photoPath = pad }
+                wachtOpUpload.remove(id)
+                bewaarWachtrij()
+                save()
+            } catch {
+                if !Netwerk.isVerbindingsfout(error) {
+                    account?.melding = "Een bankje online zetten lukte niet. Probeer het later opnieuw."
+                }
+                return   // de rest probeert het de volgende keer weer
+            }
+        }
     }
 
     // MARK: - OpenStreetMap per tegel

@@ -193,6 +193,7 @@ struct BenchCard: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var favorieten: FavorietenStore
+    @EnvironmentObject var account: AccountStore
     let bench: Bench
     let distance: CLLocationDistance?
     @State private var confirmDelete = false
@@ -239,7 +240,7 @@ struct BenchCard: View {
 
             keurStatus
 
-            if bench.source == .eigen {
+            if bench.source == .eigen && account.isIngelogd {
                 PhotosPicker(selection: $gekozenFoto, matching: .images) {
                     Label(foto == nil ? "Foto toevoegen" : "Foto wijzigen", systemImage: KaartStijl.fotoKnopIcoon)
                         .font(.system(size: 14, weight: .bold))
@@ -306,7 +307,7 @@ struct BenchCard: View {
         .opacity(verschenen ? 1 : 0)
         .onAppear { withAnimation(Animaties.fade) { verschenen = true } }
         .task(id: "\(bench.id)-\(store.fotoVersie)") {
-            foto = bench.source == .eigen ? BankjesFotos.afbeelding(voor: bench.id) : nil
+            foto = await FotoCache.shared.afbeelding(voor: bench)
         }
         .onChange(of: gekozenFoto) {
             guard let item = gekozenFoto else { return }
@@ -328,8 +329,10 @@ extension BenchCard {
         let status = keur.status(of: bench.id)
         let tekst: String = {
             switch status {
-            case .nieuw, .stemmen: return "\(keur.aantalStemmen(for: bench.id))/\(KeurInstellingen.stemmenNodig) stemmen"
-            case .inBeoordeling: return "In beoordeling…"
+            case .nieuw, .stemmen:
+                let stemmen = "\(keur.aantalStemmen(for: bench.id))/\(KeurInstellingen.stemmenNodig) stemmen"
+                return bench.source == .eigen ? "In keuring · \(stemmen)" : stemmen
+            case .inBeoordeling: return bench.source == .eigen ? "In keuring…" : "In beoordeling…"
             case .goedgekeurd: return "Goedgekeurd ✓"
             case .afgekeurd: return "Afgekeurd"
             }

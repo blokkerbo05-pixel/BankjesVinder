@@ -33,6 +33,7 @@ struct ContentView: View {
     @StateObject private var verrassing = VerrassingStatus()
     @State private var tab = 0
     @State private var kaartGeheugen = KaartGeheugen()
+    @Environment(\.scenePhase) private var scenePhase
     @AppStorage("welkomGezien") private var welkomGezien = false
 
     var body: some View {
@@ -73,7 +74,12 @@ struct ContentView: View {
         .onAppear {
             location.start()
             // De eindbeoordeling heeft het hele bankje nodig, niet alleen zijn ID.
-            keur.zoekBankje = { id in store.all.first { $0.id == id } }
+            keur.zoekBankje = { id in store.keurLijst.first { $0.id == id } }
+            store.account = account
+        }
+        .onReceive(account.$gebruiker) { store.accountGewijzigd($0?.id) }
+        .onChange(of: scenePhase) {
+            if scenePhase == .active { Task { await store.ververs() } }
         }
         .onReceive(location.$location) { newLocation in
             // Zodra we weten waar je bent: één keer de bankjes rond jou ophalen.

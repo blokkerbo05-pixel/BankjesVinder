@@ -4,6 +4,7 @@ import CoreLocation
 enum BenchSource: String, Codable {
     case eigen   // zelf toegevoegd
     case osm     // uit OpenStreetMap
+    case gedeeld // goedgekeurd bankje van een andere gebruiker
 }
 
 struct Bench: Identifiable, Codable, Hashable {
@@ -17,6 +18,8 @@ struct Bench: Identifiable, Codable, Hashable {
     var note: String
     var createdAt: Date
     var source: BenchSource
+    /// Pad van de foto in de online opslag (leeg als er geen foto is).
+    var photoPath: String?
 
     var coordinate: CLLocationCoordinate2D? {
         guard let lat, let lon else { return nil }

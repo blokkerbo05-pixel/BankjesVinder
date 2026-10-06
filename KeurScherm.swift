@@ -35,7 +35,7 @@ struct KeurScherm: View {
             .padding(.bottom, 12)
         }
         .onAppear { refresh() }
-        .onChange(of: store.all.count) { refresh() }
+        .onChange(of: store.keurLijst.count) { refresh() }
         .onChange(of: keur.data.stemmen.count) { refresh() }
     }
 
@@ -174,7 +174,7 @@ struct KeurScherm: View {
     private func maakOngedaan() {
         Haptiek.selectie()
         guard !vliegtWeg, let id = keur.maakLaatsteStemOngedaan(),
-              let bench = store.all.first(where: { $0.id == id }) else { return }
+              let bench = store.keurLijst.first(where: { $0.id == id }) else { return }
         refresh(vooraan: bench)   // dat bankje komt weer bovenaan
     }
 
@@ -192,7 +192,7 @@ struct KeurScherm: View {
 
         var nieuw = stapel.filter(geschikt)
         let alInStapel = Set(nieuw.map(\.id))
-        let erbij = store.all
+        let erbij = store.keurLijst
             .filter { !alInStapel.contains($0.id) && geschikt($0) }
             .sorted { ($0.distance(from: here) ?? .infinity) < ($1.distance(from: here) ?? .infinity) }
         nieuw.append(contentsOf: erbij)
@@ -301,7 +301,7 @@ struct KaartBeeld: View {
             }
         }
         .task(id: "\(bench.id)-\(store.fotoVersie)") {
-            foto = bench.source == .eigen ? BankjesFotos.afbeelding(voor: bench.id) : nil
+            foto = await FotoCache.shared.afbeelding(voor: bench)
             if foto == nil {
                 beeld = await KaartBeeldCache.shared.beeld(voor: bench)
             }
