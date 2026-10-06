@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -49,3 +52,14 @@ jobs:
         with:
           name: Bankjesvinder-ipa
           path: Bankjesvinder.ipa
+
+      - name: IPA publiceren als Release "laatste" (vaste downloadlink)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete laatste --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || true
+          gh release create laatste Bankjesvinder.ipa \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Laatste versie (bouw ${{ github.run_number }})" \
+            --notes "Automatisch gemaakt door bouw ${{ github.run_number }}. Download Bankjesvinder.ipa en installeer met Signulous."
