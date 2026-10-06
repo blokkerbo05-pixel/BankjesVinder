@@ -15,8 +15,6 @@ final class BenchStore: ObservableObject {
     @Published private(set) var keurKandidaten: [Bench] = []
     @Published private(set) var isLoadingOSM = false
     @Published var osmError: String?
-    /// Wordt hoger telkens als er een foto is toegevoegd of gewijzigd, zodat schermen hem opnieuw laden.
-    @Published private(set) var fotoVersie = 0
     var didAutoLoad = false
     /// Open (aan): eigen bankjes én OpenStreetMap. Journey (uit): alleen eigen bankjes, geen OpenStreetMap-verzoeken.
     @Published var toonAlle: Bool = UserDefaults.standard.object(forKey: "toonAlleBankjes") as? Bool ?? true {
@@ -86,24 +84,17 @@ final class BenchStore: ObservableObject {
         zetInWachtrij(bench.id)
     }
 
-    /// Bewaart een foto bij een eigen bankje (verkleind) en laat schermen verversen.
-    func bewaarFoto(_ image: UIImage, voor bench: Bench) {
-        guard BankjesFotos.bewaar(image, voor: bench.id) else { return }
-        fotoVersie += 1
-        zetInWachtrij(bench.id)   // de nieuwe foto gaat ook online
-    }
-
     /// Verwijdert een eigen bankje. Staat het online, dan moet er internet zijn.
     func delete(_ bench: Bench) {
         guard bench.source == .eigen else { return }
-        guard gebruiker != nil else { verwijderLokaal(bench); return }
+        guard let gebruiker else { verwijderLokaal(bench); return }
         guard Netwerk.gedeeld.isOnline else {
             account?.melding = Netwerk.geenInternet
             return
         }
         Task {
             do {
-                try await ServerBankjes.verwijder(bench)
+                try await ServerBankjes.verwijder(bench, gebruiker: gebruiker)
                 verwijderLokaal(bench)
             } catch {
                 account?.melding = Netwerk.melding(voor: error, standaard: "Verwijderen lukte niet. Probeer het opnieuw.")
@@ -202,8 +193,7 @@ final class BenchStore: ObservableObject {
                 continue
             }
             do {
-                let pad = try await ServerBankjes.zetOnline(bench, gebruiker: gebruiker)
-                if let index = own.firstIndex(where: { $0.id == id }) { own[index].photoPath = pad }
+                try await ServerBankjes.zetOnline(bench, gebruiker: gebruiker)
                 wachtOpUpload.remove(id)
                 bewaarWachtrij()
                 save()

@@ -36,6 +36,11 @@ enum BankjesFotos {
         }
     }
 
+    /// Verkleint een foto (langste kant maximaal `KaartStijl.fotoMaxPixels`) tot JPEG-data, klaar om te uploaden.
+    static func jpegData(_ image: UIImage) -> Data? {
+        verkleind(image, maxPixels: KaartStijl.fotoMaxPixels).jpegData(compressionQuality: KaartStijl.fotoJpegKwaliteit)
+    }
+
     static func verwijder(voor benchID: String) {
         try? FileManager.default.removeItem(at: file(for: benchID))
     }

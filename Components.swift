@@ -194,23 +194,16 @@ struct BenchCard: View {
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var favorieten: FavorietenStore
     @EnvironmentObject var account: AccountStore
+    @EnvironmentObject var fotos: FotoStore
     let bench: Bench
     let distance: CLLocationDistance?
     @State private var confirmDelete = false
-    @State private var foto: UIImage?
     @State private var gekozenFoto: PhotosPickerItem?
     @State private var verschenen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let foto {
-                Image(uiImage: foto)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: KaartStijl.fotoDetailHoogte)
-                    .clipShape(RoundedRectangle(cornerRadius: KaartStijl.hoekKlein))
-            }
+            FotoGalerij(bench: bench, hoogte: KaartStijl.fotoDetailHoogte)
 
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -240,14 +233,13 @@ struct BenchCard: View {
 
             keurStatus
 
-            if bench.source == .eigen && account.isIngelogd {
-                PhotosPicker(selection: $gekozenFoto, matching: .images) {
-                    Label(foto == nil ? "Foto toevoegen" : "Foto wijzigen", systemImage: KaartStijl.fotoKnopIcoon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color.wood)
-                        .padding(.horizontal, 12).padding(.vertical, 7)
-                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.wood.opacity(0.5), lineWidth: 1.5))
-                }
+            if account.isIngelogd {
+                PhotosPicker(selection: $gekozenFoto, matching: .images) { fotoKnopLabel }
+            } else {
+                Button {
+                    account.toonLogin = true
+                } label: { fotoKnopLabel }
+                .buttonStyle(.plain)
             }
 
             if let distance {
@@ -306,19 +298,25 @@ struct BenchCard: View {
         .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
         .opacity(verschenen ? 1 : 0)
         .onAppear { withAnimation(Animaties.fade) { verschenen = true } }
-        .task(id: "\(bench.id)-\(store.fotoVersie)") {
-            foto = await FotoCache.shared.afbeelding(voor: bench)
-        }
+        .task(id: bench.id) { await fotos.laad(bench) }
         .onChange(of: gekozenFoto) {
             guard let item = gekozenFoto else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
-                    store.bewaarFoto(image, voor: bench)
+                    await fotos.voegToe(image, aan: bench)
                 }
                 gekozenFoto = nil
             }
         }
+    }
+
+    private var fotoKnopLabel: some View {
+        Label("Foto toevoegen", systemImage: KaartStijl.fotoKnopIcoon)
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(Color.wood)
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.wood.opacity(0.5), lineWidth: 1.5))
     }
 }
 

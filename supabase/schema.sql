@@ -213,3 +213,88 @@ create policy "foto wijzigen" on storage.objects for update to authenticated
 drop policy if exists "foto verwijderen" on storage.objects;
 create policy "foto verwijderen" on storage.objects for delete to authenticated
   using (bucket_id = 'bankjes-fotos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ============================================================
+--  FASE 4: meerdere foto's per bankje, verwijderen en melden
+-- ============================================================
+create table if not exists public.bench_photos (
+  id uuid primary key default gen_random_uuid(),
+  bench_id text not null,                                   -- bankje-ID (kleine letters)
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  path text not null,                                       -- pad in de bucket "bankjes-fotos"
+  verborgen boolean not null default false,                 -- true = gemeld, niet meer zichtbaar voor gebruikers
+  created_at timestamptz not null default now()
+);
+create index if not exists bench_photos_bench_idx on public.bench_photos (bench_id);
+
+-- Wie heeft welke foto gemeld. Jij bekijkt dit in Table Editor -> photo_reports.
+create table if not exists public.photo_reports (
+  photo_id uuid not null references public.bench_photos(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (photo_id, user_id)
+);
+
+-- Eenmalig: de foto's uit fase 3 (kolom photo_path) overnemen.
+insert into public.bench_photos (bench_id, user_id, path)
+select lower(b.id::text), b.created_by, b.photo_path
+from public.benches b
+where b.photo_path is not null
+  and not exists (select 1 from public.bench_photos p where p.path = b.photo_path);
+
+-- Een melding verbergt de foto meteen.
+create or replace function public.foto_gemeld()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.bench_photos set verborgen = true where id = new.photo_id;
+  return null;
+end;
+$$;
+
+drop trigger if exists foto_na_melding on public.photo_reports;
+create trigger foto_na_melding
+  after insert on public.photo_reports
+  for each row execute function public.foto_gemeld();
+
+-- Bankje verwijderd: ook de foto-gegevens opruimen (uitbreiding van de eerdere opruimfunctie).
+create or replace function public.bench_opruimen()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.votes where bench_id = old.id::text;
+  delete from public.keur_status where bench_id = old.id::text;
+  delete from public.bench_photos where bench_id = old.id::text;
+  return null;
+end;
+$$;
+
+alter table public.bench_photos enable row level security;
+alter table public.photo_reports enable row level security;
+
+-- Foto's: iedereen ziet de niet-gemelde foto's; ingelogd voeg je er toe; je verwijdert alleen je eigen foto's.
+drop policy if exists "foto's lezen" on public.bench_photos;
+create policy "foto's lezen" on public.bench_photos for select using (verborgen = false);
+
+drop policy if exists "foto toevoegen aan bankje" on public.bench_photos;
+create policy "foto toevoegen aan bankje" on public.bench_photos for insert to authenticated
+  with check (user_id = auth.uid() and verborgen = false);
+
+drop policy if exists "eigen foto verwijderen" on public.bench_photos;
+create policy "eigen foto verwijderen" on public.bench_photos for delete to authenticated
+  using (user_id = auth.uid());
+
+-- Melden: ingelogd mag je een melding doen; lezen kan alleen jij via het dashboard.
+drop policy if exists "foto melden" on public.photo_reports;
+create policy "foto melden" on public.photo_reports for insert to authenticated
+  with check (user_id = auth.uid());
+
+grant select on public.bench_photos to anon, authenticated;
+grant insert, delete on public.bench_photos to authenticated;
+grant insert on public.photo_reports to authenticated;

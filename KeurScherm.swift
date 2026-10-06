@@ -294,19 +294,16 @@ struct KeurKaart: View {
 
 /// Kaartbeeld van de plek van het bankje, met een speldje in het midden.
 struct KaartBeeld: View {
-    @EnvironmentObject var store: BenchStore
+    @EnvironmentObject var fotos: FotoStore
     let bench: Bench
     @State private var beeld: UIImage?
-    @State private var foto: UIImage?
 
     var body: some View {
         ZStack {
             KaartStijl.keurAfbeeldingPlaceholder
-            if let foto {
-                // Eigen foto van het bankje, als die er is.
-                Image(uiImage: foto)
-                    .resizable()
-                    .scaledToFill()
+            if !fotos.items(voor: bench).isEmpty {
+                // Foto's van het bankje, als die er zijn (swipebaar als het er meer zijn).
+                FotoGalerij(bench: bench, hoogte: nil)
             } else if let beeld {
                 Image(uiImage: beeld)
                     .resizable()
@@ -316,11 +313,9 @@ struct KaartBeeld: View {
                 ProgressView()
             }
         }
-        .task(id: "\(bench.id)-\(store.fotoVersie)") {
-            foto = await FotoCache.shared.afbeelding(voor: bench)
-            if foto == nil {
-                beeld = await KaartBeeldCache.shared.beeld(voor: bench)
-            }
+        .task(id: bench.id) {
+            await fotos.laad(bench)
+            if beeld == nil { beeld = await KaartBeeldCache.shared.beeld(voor: bench) }
         }
     }
 }

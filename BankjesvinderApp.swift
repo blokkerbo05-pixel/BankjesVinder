@@ -8,6 +8,7 @@ struct BankjesvinderApp: App {
     @StateObject private var thema = ThemaStore()
     @StateObject private var favorieten = FavorietenStore()
     @StateObject private var account = AccountStore()
+    @StateObject private var fotos = FotoStore()
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +19,7 @@ struct BankjesvinderApp: App {
                 .environmentObject(thema)
                 .environmentObject(favorieten)
                 .environmentObject(account)
+                .environmentObject(fotos)
                 .tint(Color.leaf)
                 .preferredColorScheme(thema.weergave.colorScheme)
         }
@@ -30,6 +32,7 @@ struct ContentView: View {
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var thema: ThemaStore
     @EnvironmentObject var account: AccountStore
+    @EnvironmentObject var fotos: FotoStore
     @StateObject private var verrassing = VerrassingStatus()
     @State private var tab = 0
     @State private var kaartGeheugen = KaartGeheugen()
@@ -76,6 +79,7 @@ struct ContentView: View {
             // De eindbeoordeling heeft het hele bankje nodig, niet alleen zijn ID.
             store.account = account
             keur.account = account
+            fotos.account = account
         }
         .onReceive(account.$gebruiker) {
             store.accountGewijzigd($0?.id)

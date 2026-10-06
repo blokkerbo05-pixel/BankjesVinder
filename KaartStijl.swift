@@ -95,6 +95,7 @@ enum KaartStijl {
     static let fotoMaxPixels: CGFloat          = 1200   // foto's worden hiertoe verkleind (langste kant)
     static let fotoJpegKwaliteit: CGFloat      = 0.8
     static let fotoDetailHoogte: CGFloat       = 150    // foto op het detailkaartje
+    static let fotoMenuKnopGrootte: CGFloat    = 30     // het "..."-knopje op een foto (verwijderen / melden)
     static let fotoKnopIcoon                   = "camera"
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)

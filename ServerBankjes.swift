@@ -62,56 +62,34 @@ enum ServerBankjes {
         try await client.from("keur_status").select().limit(5000).execute().value
     }
 
-    /// Zet een bankje (en zijn foto, als die er is) online.
-    /// Geeft het pad van de foto terug.
-    @discardableResult
-    static func zetOnline(_ bench: Bench, gebruiker: UUID) async throws -> String? {
-        var pad: String? = bench.photoPath
-        if let image = BankjesFotos.afbeelding(voor: bench.id),
-           let data = image.jpegData(compressionQuality: KaartStijl.fotoJpegKwaliteit) {
-            let nieuwPad = "\(gebruiker.uuidString.lowercased())/\(bench.serverID).jpg"
-            try await client.storage.from(SupabaseConfig.fotoBucket)
-                .upload(nieuwPad, data: data, options: FileOptions(contentType: "image/jpeg", upsert: true))
-            pad = nieuwPad
-        }
-        guard let uuid = UUID(uuidString: bench.id), let lat = bench.lat, let lon = bench.lon else { return pad }
+    /// Zet een bankje online. Staat er nog een foto van vóór het inloggen op de iPhone, dan gaat die ook mee.
+    static func zetOnline(_ bench: Bench, gebruiker: UUID) async throws {
+        guard let uuid = UUID(uuidString: bench.id), let lat = bench.lat, let lon = bench.lon else { return }
         let rij = BenchRij(id: uuid, createdBy: nil, name: bench.name, place: bench.place, lat: lat, lon: lon,
                            tags: bench.tags, rating: bench.rating, note: bench.note,
-                           photoPath: pad, createdAt: bench.createdAt)
+                           photoPath: nil, createdAt: bench.createdAt)
         try await client.from("benches").upsert(rij, onConflict: "id").execute()
-        return pad
+        if let image = BankjesFotos.afbeelding(voor: bench.id) {
+            try await FotoServer.upload(image, voorBankje: bench.serverID, gebruiker: gebruiker)
+            BankjesFotos.verwijder(voor: bench.id)
+        }
     }
 
-    static func verwijder(_ bench: Bench) async throws {
+    static func verwijder(_ bench: Bench, gebruiker: UUID) async throws {
+        // Eerst de eigen foto's uit de opslag halen (best effort), dan het bankje zelf.
+        let eigenPrefix = gebruiker.uuidString.lowercased() + "/"
+        if let fotos: [BenchFoto] = try? await client.from("bench_photos").select()
+            .eq("bench_id", value: bench.serverID).execute().value {
+            let paden = fotos.map(\.path).filter { $0.hasPrefix(eigenPrefix) }
+            if !paden.isEmpty { _ = try? await client.storage.from(SupabaseConfig.fotoBucket).remove(paths: paden) }
+        }
         if let uuid = UUID(uuidString: bench.id) {
             try await client.from("benches").delete().eq("id", value: uuid.uuidString.lowercased()).execute()
-        }
-        if let pad = bench.photoPath {
-            _ = try? await client.storage.from(SupabaseConfig.fotoBucket).remove(paths: [pad])
         }
     }
 
     /// Het web-adres van een foto in de opslag.
     static func fotoURL(_ pad: String) -> URL? {
         try? client.storage.from(SupabaseConfig.fotoBucket).getPublicURL(path: pad)
-    }
-}
-
-/// Haalt de foto van een bankje: eerst van de iPhone zelf, anders van internet (en onthoudt hem).
-@MainActor
-final class FotoCache {
-    static let shared = FotoCache()
-    private let cache = NSCache<NSString, UIImage>()
-
-    func afbeelding(voor bench: Bench) async -> UIImage? {
-        if let lokaal = BankjesFotos.afbeelding(voor: bench.id) { return lokaal }
-        guard let pad = bench.photoPath else { return nil }
-        let sleutel = pad as NSString
-        if let bewaard = cache.object(forKey: sleutel) { return bewaard }
-        guard let url = ServerBankjes.fotoURL(pad),
-              let (data, _) = try? await URLSession.shared.data(from: url),
-              let image = UIImage(data: data) else { return nil }
-        cache.setObject(image, forKey: sleutel)
-        return image
     }
 }
