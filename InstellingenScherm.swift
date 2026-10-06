@@ -5,6 +5,7 @@ struct InstellingenScherm: View {
     @EnvironmentObject var thema: ThemaStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(Haptiek.sleutel) private var trillingenAan = true
+    @AppStorage("themaUitgeklapt") private var themaUitgeklapt = false   // onthoudt of de themakeuze open of dicht staat
 
     var body: some View {
         ZStack {
@@ -15,20 +16,7 @@ struct InstellingenScherm: View {
                         .font(.display(30))
                         .foregroundStyle(Color.ink)
 
-                    sectie("Thema") {
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                            ForEach(Themas.alle) { item in
-                                themaTegel(item)
-                            }
-                        }
-                    }
-
-                    sectie("Weergave") {
-                        Picker("Weergave", selection: $thema.weergave) {
-                            ForEach(Weergave.allCases) { Text($0.titel).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
+                    themaKaart
 
                     sectie("Trillingen") {
                         Toggle(isOn: $trillingenAan) {
@@ -135,36 +123,82 @@ struct InstellingenScherm: View {
         }
     }
 
-    private func themaTegel(_ item: Thema) -> some View {
+    /// Eén kaartje voor het thema: ingeklapt een regel, uitgeklapt de thema's en Licht/Donker/Automatisch.
+    private var themaKaart: some View {
+        let huidig = Themas.thema(met: thema.themaID)
+        return VStack(spacing: 0) {
+            Button {
+                withAnimation(Animaties.veer) { themaUitgeklapt.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    Text("Thema")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.ink)
+                    Spacer(minLength: 8)
+                    Text(huidig.naam)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.muted)
+                    Circle()
+                        .fill(Color.leaf)
+                        .frame(width: KaartStijl.themaStipKlein, height: KaartStijl.themaStipKlein)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.muted)
+                        .rotationEffect(.degrees(themaUitgeklapt ? 90 : 0))
+                }
+                .padding(.vertical, 14)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Thema, \(huidig.naam)")
+            .accessibilityValue(themaUitgeklapt ? "uitgeklapt" : "ingeklapt")
+
+            if themaUitgeklapt {
+                VStack(spacing: 14) {
+                    Divider().overlay(Color.line)
+                    HStack(alignment: .top, spacing: 6) {
+                        ForEach(Themas.alle) { item in
+                            themaBolletje(item)
+                        }
+                    }
+                    Picker("Weergave", selection: $thema.weergave) {
+                        ForEach(Weergave.allCases) { Text($0.titel).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                .padding(.bottom, 14)
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 14)
+        .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
+        .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
+        .clipShape(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel))
+    }
+
+    /// Een thema als klein kleurbolletje (achtergrond met de hoofdkleur erin) en de naam eronder.
+    private func themaBolletje(_ item: Thema) -> some View {
         let palet = colorScheme == .dark ? item.donker : item.licht
         let gekozen = thema.themaID == item.id
         return Button {
             Haptiek.selectie()
             thema.themaID = item.id
         } label: {
-            HStack(spacing: 10) {
-                HStack(spacing: -6) {
-                    ForEach([palet.appBg, palet.leaf, palet.wood], id: \.self) { kleur in
-                        Circle()
-                            .fill(Color(hex: kleur))
-                            .frame(width: KaartStijl.themaStipGrootte, height: KaartStijl.themaStipGrootte)
-                            .overlay(Circle().stroke(Color.line, lineWidth: 1))
-                    }
+            VStack(spacing: 6) {
+                ZStack {
+                    Circle().fill(Color(hex: palet.appBg))
+                    Circle().fill(Color(hex: palet.leaf))
+                        .frame(width: KaartStijl.themaBolGrootte * 0.55, height: KaartStijl.themaBolGrootte * 0.55)
                 }
+                .frame(width: KaartStijl.themaBolGrootte, height: KaartStijl.themaBolGrootte)
+                .overlay(Circle().stroke(Color.line, lineWidth: 1))
+                .padding(4)
+                .overlay(Circle().stroke(gekozen ? Color.leaf : Color.clear, lineWidth: 2.5))
                 Text(item.naam)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.ink)
-                Spacer(minLength: 0)
-                if gekozen {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.leaf)
-                }
+                    .font(.system(size: 12, weight: gekozen ? .bold : .semibold))
+                    .foregroundStyle(gekozen ? Color.ink : Color.muted)
             }
-            .padding(.horizontal, 12)
-            .frame(height: KaartStijl.themaTegelHoogte)
-            .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
-            .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel)
-                .stroke(gekozen ? Color.leaf : Color.line, lineWidth: gekozen ? 2 : 1.5))
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Thema \(item.naam)")

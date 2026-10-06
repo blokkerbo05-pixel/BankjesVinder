@@ -116,8 +116,8 @@ enum KaartStijl {
 
     // MARK: Instellingen-scherm
     static let instellingKopGrootte: CGFloat = 13   // kopjes als THEMA en WEERGAVE
-    static let themaTegelHoogte: CGFloat     = 58
-    static let themaStipGrootte: CGFloat     = 20
+    static let themaBolGrootte: CGFloat      = 40   // kleurbolletje van een thema (uitgeklapt)
+    static let themaStipKlein: CGFloat       = 12   // klein bolletje in de ingeklapte regel
     static let binnenkortLabelGrootte: CGFloat = 11  // klein "binnenkort"-label
 
     // MARK: Opslag op de iPhone (houdt de app snel)
