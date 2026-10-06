@@ -48,6 +48,14 @@ enum KaartStijl {
     /// Zoveel seconden wachten op één server voordat de volgende erbij wordt gevraagd.
     static let serverStaffelSeconden: Double = 3
 
+    // MARK: Opslag op de iPhone (houdt de app snel)
+    /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
+    static let tegelMaxDagen: Double = 30
+    /// Maximaal zoveel tegels bewaren; de oudste gaan eerst weg.
+    static let maxBewaardeTegels = 200
+    /// De lijst "Dichtbij" kijkt alleen naar bankjes binnen deze afstand (in meters).
+    static let dichtbijStraal: CLLocationDistance = 3000
+
     // MARK: Stijl
     static let bankjeIcoon = "chair.lounge.fill"   // SF Symbol-naam
     static let locatieIcoon = "location.fill"

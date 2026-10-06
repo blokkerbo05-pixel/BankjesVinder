@@ -16,18 +16,12 @@ struct MapScreen: View {
     @State private var showAdd = false
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var clustered = ClusterResult()
+    /// De 10 bankjes die het dichtst bij jou staan (alleen opnieuw berekend als dat nodig is).
+    @State private var nearest: [Bench] = []
 
     private var mapped: [Bench] { store.all.filter { $0.coordinate != nil } }
 
     private var selected: Bench? { store.all.first { $0.id == selectedID } }
-
-    /// De 10 bankjes die het dichtst bij jou staan.
-    private var nearest: [Bench] {
-        guard let here = location.location else { return [] }
-        return Array(mapped
-            .sorted { ($0.distance(from: here) ?? .infinity) < ($1.distance(from: here) ?? .infinity) }
-            .prefix(10))
-    }
 
     var body: some View {
         ZStack {
@@ -67,9 +61,16 @@ struct MapScreen: View {
                 recluster()
                 store.loadTiles(in: context.region)
             }
-            .onChange(of: store.all.count) { recluster() }
+            .onChange(of: store.all.count) {
+                recluster()
+                refreshNearest()
+            }
+            .onChange(of: location.location) { refreshNearest() }
             .onChange(of: selectedID) { recluster() }
-            .onAppear { recluster() }
+            .onAppear {
+                recluster()
+                refreshNearest()
+            }
 
             VStack(spacing: 10) {
                 topBar
@@ -278,6 +279,27 @@ struct MapScreen: View {
             region: visibleRegion ?? KaartStijl.startRegio,
             screen: UIScreen.main.bounds.size,
             keepLooseID: selectedID)
+    }
+
+    /// Zoekt de 10 dichtstbijzijnde bankjes, alleen binnen de straal uit KaartStijl (snel, ook bij heel veel bankjes).
+    private func refreshNearest() {
+        guard let here = location.location else {
+            nearest = []
+            return
+        }
+        let radius = KaartStijl.dichtbijStraal
+        let dLat = radius / 111_000
+        let dLon = dLat / max(cos(here.coordinate.latitude * .pi / 180), 0.01)
+        var close: [(bench: Bench, distance: CLLocationDistance)] = []
+        for bench in store.all {
+            guard let lat = bench.lat, let lon = bench.lon,
+                  abs(lat - here.coordinate.latitude) <= dLat,
+                  abs(lon - here.coordinate.longitude) <= dLon,
+                  let distance = bench.distance(from: here), distance <= radius else { continue }
+            close.append((bench, distance))
+        }
+        close.sort { $0.distance < $1.distance }
+        nearest = close.prefix(10).map { $0.bench }
     }
 
     /// Tik op een cluster: zoom in tot de bankjes los staan.

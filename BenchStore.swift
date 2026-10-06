@@ -63,7 +63,9 @@ final class BenchStore: ObservableObject {
     /// Leest bij de start de bewaarde tegels van de iPhone, zodat de bankjes meteen zichtbaar zijn.
     private func loadTileCache() {
         Task.detached(priority: .userInitiated) { [weak self] in
-            let tiles = TileCache.loadAll()
+            let tiles = TileCache.loadAndPrune(
+                maxAge: KaartStijl.tegelMaxDagen * 24 * 3600,
+                maxCount: KaartStijl.maxBewaardeTegels)
             await self?.finishCacheLoad(tiles)
         }
     }

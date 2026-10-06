@@ -187,13 +187,29 @@ enum TileCache {
         try? data.write(to: file, options: .atomic)
     }
 
-    static func loadAll() -> [CachedTile] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
+    /// Leest alle bewaarde tegels en ruimt meteen op: te oude tegels en tegels boven het maximum (oudste eerst) gaan weg.
+    static func loadAndPrune(maxAge: TimeInterval, maxCount: Int) -> [CachedTile] {
+        let fm = FileManager.default
+        let files = (try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
         let decoder = JSONDecoder()
-        return files.compactMap { file in
-            guard file.pathExtension == "json",
-                  let data = try? Data(contentsOf: file) else { return nil }
-            return try? decoder.decode(CachedTile.self, from: data)
+        let now = Date()
+
+        var kept: [(tile: CachedTile, file: URL)] = []
+        for file in files where file.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: file),
+                  let tile = try? decoder.decode(CachedTile.self, from: data),
+                  now.timeIntervalSince(tile.fetchedAt) < maxAge else {
+                try? fm.removeItem(at: file)   // kapot of te oud
+                continue
+            }
+            kept.append((tile, file))
         }
+
+        kept.sort { $0.tile.fetchedAt > $1.tile.fetchedAt }   // nieuwste eerst
+        if kept.count > maxCount {
+            for old in kept[maxCount...] { try? fm.removeItem(at: old.file) }
+            kept = Array(kept[..<maxCount])
+        }
+        return kept.map { $0.tile }
     }
 }
