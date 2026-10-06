@@ -112,19 +112,21 @@ struct AddBenchButton: View {
 }
 
 /// Speld op de kaart: hout-kleur voor bankjes die mensen zelf toevoegden, groen voor OpenStreetMap.
+/// Kleuren en groottes komen uit KaartStijl.swift.
 struct BenchPin: View {
     let isOwn: Bool
     let isSelected: Bool
     var body: some View {
+        let size = isSelected ? KaartStijl.geselecteerdeStipGrootte : KaartStijl.stipGrootte
         ZStack {
             Circle()
-                .fill(isOwn ? Color.wood : Color.leaf)
-                .frame(width: isSelected ? 38 : 28, height: isSelected ? 38 : 28)
-                .overlay(Circle().stroke(Color.surface, lineWidth: 2.5))
-                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
-            Image(systemName: "chair.lounge.fill")
-                .font(.system(size: isSelected ? 17 : 13, weight: .bold))
-                .foregroundStyle(Color.surface)
+                .fill(isOwn ? KaartStijl.eigenBankjeKleur : KaartStijl.bankjeKleur)
+                .frame(width: size, height: size)
+                .overlay(Circle().stroke(KaartStijl.randKleur, lineWidth: KaartStijl.randDikte))
+                .shadow(color: .black.opacity(KaartStijl.schaduw), radius: 3, y: 2)
+            Image(systemName: KaartStijl.bankjeIcoon)
+                .font(.system(size: isSelected ? KaartStijl.geselecteerdIcoonGrootte : KaartStijl.icoonGrootte, weight: .bold))
+                .foregroundStyle(KaartStijl.icoonKleur)
         }
         .animation(.spring(duration: 0.25), value: isSelected)
     }

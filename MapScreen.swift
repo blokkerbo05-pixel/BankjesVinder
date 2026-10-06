@@ -7,12 +7,10 @@ struct MapScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
 
-    // Start op je eigen locatie; zonder locatie op Amersfoort.
-    @State private var position: MapCameraPosition = .userLocation(
-        fallback: .region(MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 52.1561, longitude: 5.3878),
-            latitudinalMeters: 3000, longitudinalMeters: 3000))
-    )
+    // Begint op Amersfoort; zodra je locatie bekend is springt de kaart naar jou.
+    @State private var position: MapCameraPosition = .region(KaartStijl.startRegio)
+    @State private var didCenterOnUser = false
+    @State private var showLocationHelp = false
     @State private var selectedID: String?
     @State private var mapCenter: CLLocationCoordinate2D?
     @State private var showAdd = false
@@ -54,9 +52,8 @@ struct MapScreen: View {
                         .annotationTitles(.hidden)
                 }
             }
-            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapStyle(KaartStijl.kaartType)
             .mapControls {
-                MapUserLocationButton()
                 MapCompass()
                 MapScaleView()
             }
@@ -67,8 +64,29 @@ struct MapScreen: View {
             VStack(spacing: 10) {
                 topBar
                 Spacer()
+                HStack {
+                    Spacer()
+                    locationButton
+                }
+                .padding(.horizontal, 16)
                 bottomPanel
             }
+        }
+        .onReceive(location.$location) { newLocation in
+            // De eerste keer dat we weten waar je bent: kaart naar jou toe.
+            guard let newLocation, !didCenterOnUser else { return }
+            didCenterOnUser = true
+            withAnimation(.easeInOut(duration: 0.6)) {
+                position = .region(MKCoordinateRegion(center: newLocation.coordinate,
+                                                      latitudinalMeters: KaartStijl.zoomOpJezelf,
+                                                      longitudinalMeters: KaartStijl.zoomOpJezelf))
+            }
+        }
+        .alert("Locatie staat uit", isPresented: $showLocationHelp) {
+            Button("Open Instellingen") { openSettings() }
+            Button("Later", role: .cancel) {}
+        } message: {
+            Text("Bankjesvinder mag je locatie nog niet gebruiken. Ga naar Instellingen → Bankjes → Locatie en kies 'Bij gebruik van app'. Staat het daar al goed? Check dan Instellingen → Privacy en beveiliging → Locatievoorzieningen.")
         }
         .sheet(isPresented: $showAdd) {
             AddBenchSheet(start: location.location?.coordinate ?? mapCenter)
@@ -82,8 +100,8 @@ struct MapScreen: View {
     private var topBar: some View {
         VStack(spacing: 8) {
             if location.isDenied {
-                banner("Zet locatie aan om bankjes bij jou in de buurt te zien.", button: "Instellingen") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                banner("Je locatie staat uit. Zet hem aan via Instellingen → Bankjes → Locatie → 'Bij gebruik van app'.", button: "Instellingen") {
+                    openSettings()
                 }
             }
             if let error = store.osmError {
@@ -123,6 +141,43 @@ struct MapScreen: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.woodSoft))
+    }
+
+    // MARK: - Knop: naar mijn locatie
+
+    private var locationButton: some View {
+        Button { centerOnUser() } label: {
+            Image(systemName: KaartStijl.locatieIcoon)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(KaartStijl.knopIcoonKleur)
+                .frame(width: KaartStijl.locatieKnopGrootte, height: KaartStijl.locatieKnopGrootte)
+                .background(Circle().fill(KaartStijl.knopAchtergrond))
+                .overlay(Circle().stroke(Color.line, lineWidth: 1))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Naar mijn locatie")
+    }
+
+    private func centerOnUser() {
+        if location.isDenied {
+            showLocationHelp = true
+            return
+        }
+        location.start()
+        withAnimation(.easeInOut(duration: 0.5)) {
+            if let here = location.location {
+                position = .region(MKCoordinateRegion(center: here.coordinate,
+                                                      latitudinalMeters: KaartStijl.zoomOpJezelf,
+                                                      longitudinalMeters: KaartStijl.zoomOpJezelf))
+            } else {
+                position = .userLocation(fallback: .automatic)
+            }
+        }
+    }
+
+    private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
     }
 
     // MARK: - Onderkant
@@ -208,7 +263,7 @@ struct MapScreen: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             selectedID = bench.id
             if let c = bench.coordinate {
-                position = .region(MKCoordinateRegion(center: c, latitudinalMeters: 600, longitudinalMeters: 600))
+                position = .region(MKCoordinateRegion(center: c, latitudinalMeters: KaartStijl.zoomOpBankje, longitudinalMeters: KaartStijl.zoomOpBankje))
             }
         }
     }
