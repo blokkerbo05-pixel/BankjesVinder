@@ -67,7 +67,7 @@ enum KaartStijl {
     static let dichtbijTegelRand        = Color.line
     static let dichtbijTegelBreedte: CGFloat    = 128
     static let dichtbijTegelPadding: CGFloat    = 8
-    static let dichtbijTegelHoek: CGFloat       = 10
+    static let dichtbijTegelHoek: CGFloat       = hoekKlein
     static let dichtbijNaamGrootte: CGFloat     = 12   // naam van het bankje
     static let dichtbijInfoGrootte: CGFloat     = 11   // afstand en looptijd
     static let dichtbijKopGrootte: CGFloat      = 11   // het woord DICHTBIJ
@@ -76,7 +76,7 @@ enum KaartStijl {
     // MARK: Keuren (de Keuren-tab met kaarten)
     static let keurKaartAchtergrond = Color.surface
     static let keurKaartRand        = Color.line
-    static let keurKaartHoek: CGFloat           = 22
+    static let keurKaartHoek: CGFloat           = hoekGroot
     static let keurAfbeeldingHoogte: CGFloat    = 240   // kaartbeeld of foto bovenaan de kaart
     static let keurAfbeeldingPlaceholder        = Color.leafSoft
     static let keurGoedKleur                    = Color.leaf     // "Goed bankje"
@@ -98,6 +98,16 @@ enum KaartStijl {
     static let fotoKnopIcoon                   = "camera"
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
+
+    // MARK: Zwevende elementen en schaduwen
+    static let zwevendMateriaal: Material = .ultraThinMaterial   // knoppen en balken waar de kaart doorheen schemert
+    static let zwevendRand = Color.line.opacity(0.6)
+    static let schaduwZachtOpacity: Double   = 0.14
+    static let schaduwZachtRadius: CGFloat   = 8
+    static let schaduwZachtY: CGFloat        = 3
+    static let schaduwKaartOpacity: Double   = 0.12
+    static let schaduwKaartRadius: CGFloat   = 12
+    static let schaduwKaartY: CGFloat        = 5
 
     // MARK: Hoeken (overal dezelfde afrondingen)
     static let hoekKlein: CGFloat  = 10

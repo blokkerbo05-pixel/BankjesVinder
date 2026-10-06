@@ -168,7 +168,7 @@ struct MapScreen: View {
                             Text("Laad bankjes in dit gebied")
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.indruk)
                 }
             }
         }
@@ -182,8 +182,7 @@ struct MapScreen: View {
             .font(.system(size: KaartStijl.laadTekstGrootte, weight: .semibold))
             .foregroundStyle(KaartStijl.laadTekstKleur)
             .padding(.horizontal, 12).padding(.vertical, 6)
-            .background(Capsule().fill(KaartStijl.laadAchtergrond))
-            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+            .zwevendeAchtergrond(Capsule())
     }
 
     private func banner(_ text: String, button: String, action: @escaping () -> Void) -> some View {
@@ -195,7 +194,7 @@ struct MapScreen: View {
                 .foregroundStyle(Color.leaf)
         }
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.woodSoft))
+        .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.woodSoft))
     }
 
     // MARK: - Knop: naar mijn locatie
@@ -206,11 +205,9 @@ struct MapScreen: View {
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(KaartStijl.knopIcoonKleur)
                 .frame(width: KaartStijl.locatieKnopGrootte, height: KaartStijl.locatieKnopGrootte)
-                .background(Circle().fill(KaartStijl.knopAchtergrond))
-                .overlay(Circle().stroke(Color.line, lineWidth: 1))
-                .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+                .zwevendeAchtergrond(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
         .accessibilityLabel("Naar mijn locatie")
     }
 
@@ -222,11 +219,10 @@ struct MapScreen: View {
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(KaartStijl.toevoegKnopKleur)
                 .frame(width: KaartStijl.toevoegKnopGrootte, height: KaartStijl.toevoegKnopGrootte)
-                .background(Circle().fill(KaartStijl.knopAchtergrond))
+                .zwevendeAchtergrond(Circle())
                 .overlay(Circle().stroke(KaartStijl.toevoegKnopKleur, lineWidth: 1.5))
-                .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
         .accessibilityLabel("Bankje toevoegen")
     }
 
@@ -264,12 +260,11 @@ struct MapScreen: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(Color.ink)
                         .frame(width: 34, height: 34)
-                        .background(Circle().fill(Color.surface))
-                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        .zwevendeAchtergrond(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.indruk)
                 BenchCard(bench: bench, distance: bench.distance(from: location.location))
-                    .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+                    .kaartSchaduw()
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
@@ -322,7 +317,7 @@ struct MapScreen: View {
             .background(RoundedRectangle(cornerRadius: KaartStijl.dichtbijTegelHoek).fill(KaartStijl.dichtbijTegelAchtergrond))
             .overlay(RoundedRectangle(cornerRadius: KaartStijl.dichtbijTegelHoek).stroke(KaartStijl.dichtbijTegelRand, lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
     }
 
     // MARK: - Acties

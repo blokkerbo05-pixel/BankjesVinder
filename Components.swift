@@ -55,7 +55,7 @@ struct Chip: View {
                 .background(Capsule().fill(isOn ? Color.leaf : Color.surface))
                 .overlay(Capsule().stroke(isOn ? Color.leaf : Color.line, lineWidth: 1.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
     }
 }
 
@@ -106,9 +106,9 @@ struct AddBenchButton: View {
                 .padding(.horizontal, 26)
                 .padding(.vertical, 15)
                 .background(Capsule().fill(Color.wood))
-                .shadow(color: .black.opacity(0.22), radius: 10, y: 6)
+                .kaartSchaduw()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
     }
 }
 
@@ -189,7 +189,7 @@ struct BenchCard: View {
                     .scaledToFill()
                     .frame(maxWidth: .infinity)
                     .frame(height: KaartStijl.fotoDetailHoogte)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .clipShape(RoundedRectangle(cornerRadius: KaartStijl.hoekKlein))
             }
 
             HStack(alignment: .top, spacing: 10) {
@@ -281,8 +281,8 @@ struct BenchCard: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.surface))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line, lineWidth: 1.5))
+        .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
+        .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
         .task(id: "\(bench.id)-\(store.fotoVersie)") {
             foto = bench.source == .eigen ? BankjesFotos.afbeelding(voor: bench.id) : nil
         }
@@ -350,6 +350,6 @@ struct EmptyStateView: View {
         .padding(.vertical, 36)
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line, style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
+        .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
     }
 }

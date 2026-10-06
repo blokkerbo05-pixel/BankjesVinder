@@ -92,11 +92,10 @@ struct KeurScherm: View {
                 .font(.system(size: grootte * 0.4, weight: .bold))
                 .foregroundStyle(kleur)
                 .frame(width: grootte, height: grootte)
-                .background(Circle().fill(Color.surface))
+                .zwevendeAchtergrond(Circle())
                 .overlay(Circle().stroke(kleur.opacity(0.5), lineWidth: 1.5))
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.indruk)
         .accessibilityLabel(label)
     }
 
@@ -260,7 +259,7 @@ struct KeurKaart: View {
             stempelLabel("GEEN GOED BANKJE", kleur: KaartStijl.keurSlechtKleur, hoek: 14)
                 .opacity(max(0, -stempel))
         }
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .kaartSchaduw()
     }
 
     private func stempelLabel(_ tekst: String, kleur: Color, hoek: Double) -> some View {
