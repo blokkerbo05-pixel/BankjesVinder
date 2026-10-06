@@ -37,7 +37,6 @@ enum OSMService {
         let tags: [String: String]?
     }
 
-    /// Alle servers worden tegelijk gevraagd; de snelste wint.
     private static let endpoints = [
         "https://overpass-api.de/api/interpreter",
         "https://overpass.kumi.systems/api/interpreter",
@@ -45,32 +44,70 @@ enum OSMService {
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     ]
 
+    /// De server die de vorige keer het snelst was; die vragen we als eerste.
+    private static let fastestKey = "osmSnelsteServer"
+
+    private static var orderedEndpoints: [String] {
+        guard let fastest = UserDefaults.standard.string(forKey: fastestKey),
+              endpoints.contains(fastest) else { return endpoints }
+        return [fastest] + endpoints.filter { $0 != fastest }
+    }
+
+    private enum Outcome {
+        case done(String, Result<[Bench], Error>)
+        case tick(Int)   // de wachttijd na server nummer ... is om
+    }
+
     /// Haalt alle bankjes van één tegel op.
+    /// Eerst vragen we één server. Komt er binnen een paar seconden geen antwoord,
+    /// dan vragen we de volgende erbij (en zo verder). Het eerste goede antwoord wint.
     static func benches(in tile: TileKey) async throws -> [Bench] {
         let query = "[out:json][timeout:20];node[\"amenity\"=\"bench\"](\(tile.south),\(tile.west),\(tile.north),\(tile.east));out body;"
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
         let body = "data=" + (query.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")
+        let servers = orderedEndpoints
+        let waitNanoseconds = UInt64(KaartStijl.serverStaffelSeconden * 1_000_000_000)
 
-        return try await withThrowingTaskGroup(of: Result<[Bench], Error>.self) { group in
-            for endpoint in endpoints {
-                group.addTask {
-                    do { return .success(try await fetch(endpoint: endpoint, body: body)) }
-                    catch { return .failure(error) }
-                }
-            }
+        return try await withThrowingTaskGroup(of: Outcome.self) { group in
+            var launched = 0
+            var needLaunch = true
             var lastError: Error = URLError(.badServerResponse)
-            for try await result in group {
-                switch result {
-                case .success(let found):
+
+            while true {
+                if needLaunch && launched < servers.count {
+                    let endpoint = servers[launched]
+                    let number = launched
+                    launched += 1
+                    group.addTask {
+                        do { return .done(endpoint, .success(try await fetch(endpoint: endpoint, body: body))) }
+                        catch { return .done(endpoint, .failure(error)) }
+                    }
+                    if launched < servers.count {
+                        group.addTask {
+                            try? await Task.sleep(nanoseconds: waitNanoseconds)
+                            return .tick(number)
+                        }
+                    }
+                }
+                needLaunch = false
+
+                guard let outcome = try await group.next() else { break }
+                switch outcome {
+                case .done(let endpoint, .success(let found)):
                     group.cancelAll()   // de rest hoeft niet meer
+                    UserDefaults.standard.set(endpoint, forKey: fastestKey)
                     // Een bankje hoort bij precies één tegel, zodat randen niet dubbel tellen.
                     return found.filter { bench in
                         guard let lat = bench.lat, let lon = bench.lon else { return false }
                         return TileKey.containing(lat: lat, lon: lon) == tile
                     }
-                case .failure(let error):
+                case .done(_, .failure(let error)):
                     lastError = error
+                    needLaunch = true   // deze server lukte niet: meteen de volgende proberen
+                case .tick(let number):
+                    // Alleen de wachttijd van de laatst gevraagde server telt.
+                    if number == launched - 1 { needLaunch = true }
                 }
             }
             throw lastError

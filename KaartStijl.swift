@@ -42,6 +42,12 @@ enum KaartStijl {
     static let laadTekstKleur   = Color.ink
     static let laadTekstGrootte: CGFloat = 13
 
+    // MARK: Bankjes laden (OpenStreetMap)
+    /// Zoveel kaarttegels worden tegelijk opgehaald.
+    static let maxTegelsTegelijk = 2
+    /// Zoveel seconden wachten op één server voordat de volgende erbij wordt gevraagd.
+    static let serverStaffelSeconden: Double = 3
+
     // MARK: Stijl
     static let bankjeIcoon = "chair.lounge.fill"   // SF Symbol-naam
     static let locatieIcoon = "location.fill"

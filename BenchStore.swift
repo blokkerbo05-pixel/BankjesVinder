@@ -21,7 +21,6 @@ final class BenchStore: ObservableObject {
     private var cacheLoaded = false
     private var regionWaitingForCache: MKCoordinateRegion?
 
-    private let maxParallelTiles = 3             // zoveel tegels tegelijk ophalen
     private let maxTilesPerRequest = 12          // niet meer tegels tegelijk aanvragen, ook niet als je ver uitzoomt
     private let cacheMaxAge: TimeInterval = 7 * 24 * 3600   // na een week opnieuw ophalen
     private let retryAfterFailure: TimeInterval = 20
@@ -139,7 +138,7 @@ final class BenchStore: ObservableObject {
     }
 
     private func pump() {
-        while activeTiles.count < maxParallelTiles, !pendingTiles.isEmpty {
+        while activeTiles.count < KaartStijl.maxTegelsTegelijk, !pendingTiles.isEmpty {
             let key = pendingTiles.removeFirst()
             activeTiles.insert(key)
             Task { await fetchTile(key) }
