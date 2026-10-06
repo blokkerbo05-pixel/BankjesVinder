@@ -1,0 +1,45 @@
+name: Bouw iPhone-app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Code ophalen
+        uses: actions/checkout@v4
+
+      - name: XcodeGen installeren
+        run: brew install xcodegen
+
+      - name: Xcode-project maken
+        run: xcodegen generate
+
+      - name: App bouwen (zonder ondertekening, dat doet Signulous)
+        run: |
+          xcodebuild \
+            -project Bankjesvinder.xcodeproj \
+            -scheme Bankjesvinder \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: IPA-bestand maken
+        run: |
+          mkdir -p Payload
+          cp -R build/Build/Products/Release-iphoneos/Bankjesvinder.app Payload/
+          zip -qry Bankjesvinder.ipa Payload
+
+      - name: IPA klaarzetten om te downloaden
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bankjesvinder-ipa
+          path: Bankjesvinder.ipa
