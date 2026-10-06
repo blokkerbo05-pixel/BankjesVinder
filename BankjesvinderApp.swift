@@ -74,12 +74,18 @@ struct ContentView: View {
         .onAppear {
             location.start()
             // De eindbeoordeling heeft het hele bankje nodig, niet alleen zijn ID.
-            keur.zoekBankje = { id in store.keurLijst.first { $0.id == id } }
             store.account = account
+            keur.account = account
         }
-        .onReceive(account.$gebruiker) { store.accountGewijzigd($0?.id) }
+        .onReceive(account.$gebruiker) {
+            store.accountGewijzigd($0?.id)
+            keur.accountGewijzigd($0?.id)
+        }
         .onChange(of: scenePhase) {
-            if scenePhase == .active { Task { await store.ververs() } }
+            if scenePhase == .active {
+                Task { await store.ververs() }
+                Task { await keur.ververs() }
+            }
         }
         .onReceive(location.$location) { newLocation in
             // Zodra we weten waar je bent: één keer de bankjes rond jou ophalen.

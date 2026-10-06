@@ -7,6 +7,7 @@ struct KeurScherm: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var account: AccountStore
 
     /// De bankjes die nog gekeurd moeten worden; het eerste staat bovenaan.
     @State private var stapel: [Bench] = []
@@ -19,7 +20,22 @@ struct KeurScherm: View {
             Color.appBg.ignoresSafeArea()
             VStack(spacing: 14) {
                 header
-                if location.location == nil {
+                if !account.isIngelogd {
+                    melding(icoon: "person.crop.circle", titel: "Log in om te keuren",
+                            tekst: "Kijken kan zonder account, maar om bankjes te keuren heb je een account nodig.")
+                    Button {
+                        Haptiek.licht()
+                        account.toonLogin = true
+                    } label: {
+                        Text("Inloggen")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundStyle(Color.appBg)
+                            .padding(.horizontal, 28).padding(.vertical, 12)
+                            .background(Capsule().fill(Color.leaf))
+                    }
+                    .buttonStyle(.indruk)
+                    Spacer()
+                } else if location.location == nil {
                     melding(icoon: "location.slash", titel: "Locatie nodig",
                             tekst: "Zet je locatie aan, dan laten we bankjes in de buurt zien om te keuren.")
                 } else if stapel.isEmpty {
@@ -168,13 +184,13 @@ struct KeurScherm: View {
 
     private func stem(goed: Bool) {
         guard let bench = stapel.first else { return }
-        keur.stem(op: bench, goed: goed)   // de stapel wordt daarna vanzelf ververst
+        account.metAccount { keur.stem(op: bench, goed: goed) }   // de stapel wordt daarna vanzelf ververst
     }
 
     private func maakOngedaan() {
         Haptiek.selectie()
         guard !vliegtWeg, let id = keur.maakLaatsteStemOngedaan(),
-              let bench = store.keurLijst.first(where: { $0.id == id }) else { return }
+              let bench = store.keurLijst.first(where: { $0.serverID == id }) else { return }
         refresh(vooraan: bench)   // dat bankje komt weer bovenaan
     }
 
