@@ -132,6 +132,22 @@ struct BenchPin: View {
     }
 }
 
+/// Groen bolletje met het aantal bankjes erin.
+struct ClusterPin: View {
+    let count: Int
+    var body: some View {
+        let size = count >= 10 ? KaartStijl.clusterGrootteGroot : KaartStijl.clusterGrootte
+        Text("\(count)")
+            .font(.system(size: KaartStijl.clusterTekstGrootte, weight: .heavy))
+            .monospacedDigit()
+            .foregroundStyle(KaartStijl.clusterTekstKleur)
+            .frame(width: size, height: size)
+            .background(Circle().fill(KaartStijl.clusterKleur))
+            .overlay(Circle().stroke(KaartStijl.randKleur, lineWidth: KaartStijl.randDikte))
+            .shadow(color: .black.opacity(KaartStijl.schaduw), radius: 3, y: 2)
+    }
+}
+
 enum MapsOpener {
     static func openInAppleMaps(_ bench: Bench) {
         if let coordinate = bench.coordinate {

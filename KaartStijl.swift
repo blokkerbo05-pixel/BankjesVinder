@@ -24,6 +24,19 @@ enum KaartStijl {
     static let randDikte: CGFloat                = 2.5
     static let locatieKnopGrootte: CGFloat       = 48
 
+    // MARK: Clusters (bolletje met een getal als bankjes dicht bij elkaar staan)
+    static let clusterKleur      = bankjeKleur   // zelfde groen als een bankje
+    static let clusterTekstKleur = Color.surface // kleur van het getal
+    static let clusterGrootte: CGFloat      = 38 // bolletje met 2 t/m 9 bankjes
+    static let clusterGrootteGroot: CGFloat = 46 // bolletje met 10 of meer bankjes
+    static let clusterTekstGrootte: CGFloat = 16
+    /// Bankjes die op het scherm dichter dan dit (in punten) bij elkaar staan, worden samengevoegd.
+    static let clusterAfstand: CGFloat = 44
+    /// Is de kaart zo ver ingezoomd (hoogte van het scherm in meters), dan staat alles los.
+    static let clusterUitBijMeters: Double = 150
+    /// Hoe ruim er wordt ingezoomd als je op een cluster tikt (groter = minder ver inzoomen).
+    static let clusterZoomRuimte: Double = 2.2
+
     // MARK: Stijl
     static let bankjeIcoon = "chair.lounge.fill"   // SF Symbol-naam
     static let locatieIcoon = "location.fill"

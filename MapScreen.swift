@@ -14,6 +14,8 @@ struct MapScreen: View {
     @State private var selectedID: String?
     @State private var mapCenter: CLLocationCoordinate2D?
     @State private var showAdd = false
+    @State private var visibleRegion: MKCoordinateRegion?
+    @State private var clustered = ClusterResult()
 
     private var mapped: [Bench] { store.all.filter { $0.coordinate != nil } }
 
@@ -40,16 +42,27 @@ struct MapScreen: View {
         ZStack {
             Map(position: $position) {
                 UserAnnotation()
-                ForEach(mapped) { bench in
-                        Annotation(bench.name, coordinate: bench.coordinate!, anchor: .center) {
-                            Button {
-                                select(bench)
-                            } label: {
-                                BenchPin(isOwn: bench.source == .eigen, isSelected: bench.id == selectedID)
-                            }
-                            .buttonStyle(.plain)
+                ForEach(clustered.singles) { bench in
+                    Annotation(bench.name, coordinate: bench.coordinate!, anchor: .center) {
+                        Button {
+                            select(bench)
+                        } label: {
+                            BenchPin(isOwn: bench.source == .eigen, isSelected: bench.id == selectedID)
                         }
-                        .annotationTitles(.hidden)
+                        .buttonStyle(.plain)
+                    }
+                    .annotationTitles(.hidden)
+                }
+                ForEach(clustered.clusters) { cluster in
+                    Annotation("\(cluster.count) bankjes", coordinate: cluster.coordinate, anchor: .center) {
+                        Button {
+                            zoom(into: cluster)
+                        } label: {
+                            ClusterPin(count: cluster.count)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .annotationTitles(.hidden)
                 }
             }
             .mapStyle(KaartStijl.kaartType)
@@ -59,7 +72,12 @@ struct MapScreen: View {
             }
             .onMapCameraChange(frequency: .onEnd) { context in
                 mapCenter = context.region.center
+                visibleRegion = context.region
+                recluster()
             }
+            .onChange(of: store.all.count) { recluster() }
+            .onChange(of: selectedID) { recluster() }
+            .onAppear { recluster() }
 
             VStack(spacing: 10) {
                 topBar
@@ -265,6 +283,22 @@ struct MapScreen: View {
             if let c = bench.coordinate {
                 position = .region(MKCoordinateRegion(center: c, latitudinalMeters: KaartStijl.zoomOpBankje, longitudinalMeters: KaartStijl.zoomOpBankje))
             }
+        }
+    }
+
+    /// Bepaalt opnieuw welke bankjes los staan en welke een cluster vormen.
+    private func recluster() {
+        clustered = BenchClustering.make(
+            benches: mapped,
+            region: visibleRegion ?? KaartStijl.startRegio,
+            screen: UIScreen.main.bounds.size,
+            keepLooseID: selectedID)
+    }
+
+    /// Tik op een cluster: zoom in tot de bankjes los staan.
+    private func zoom(into cluster: BenchCluster) {
+        withAnimation(.easeInOut(duration: 0.4)) {
+            position = .region(BenchClustering.zoomRegion(for: cluster))
         }
     }
 
