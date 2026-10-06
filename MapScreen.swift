@@ -8,6 +8,7 @@ struct MapScreen: View {
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var favorieten: FavorietenStore
+    @EnvironmentObject var account: AccountStore
     let geheugen: KaartGeheugen
 
     init(geheugen: KaartGeheugen) {
@@ -240,7 +241,7 @@ struct MapScreen: View {
                 .multilineTextAlignment(.center)
             Button {
                 Haptiek.licht()
-                showAdd = true
+                account.metAccount { showAdd = true }
             } label: {
                 Text("Voeg je eerste bankje toe")
                     .font(.system(size: 15, weight: .bold))
@@ -293,7 +294,7 @@ struct MapScreen: View {
     private var addButton: some View {
         Button {
             Haptiek.licht()
-            showAdd = true
+            account.metAccount { showAdd = true }
         } label: {
             Image(systemName: KaartStijl.toevoegIcoon)
                 .font(.system(size: 18, weight: .bold))

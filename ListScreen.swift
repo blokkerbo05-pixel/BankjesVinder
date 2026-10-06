@@ -6,6 +6,7 @@ struct ListScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var favorieten: FavorietenStore
+    @EnvironmentObject var account: AccountStore
 
     @State private var alleenFavorieten = false
     @State private var query = ""
@@ -66,7 +67,7 @@ struct ListScreen: View {
                 .padding(.bottom, 110)
             }
 
-            AddBenchButton { showAdd = true }
+            AddBenchButton { account.metAccount { showAdd = true } }
                 .padding(.bottom, 14)
         }
         .sheet(isPresented: $showAdd) {

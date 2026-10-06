@@ -11,6 +11,9 @@ enum SupabaseConfig {
     static let url = URL(string: "https://pbpvshsdbxxoxybxccqa.supabase.co")!
     static let publishableKey = "sb_publishable_qciB-uDQc-3btY_FONrRZA_oJa27uq5"
 
+    /// Hoeveel cijfers de inlogcode uit de e-mail heeft (zelfde als in het Supabase-dashboard).
+    static let codeLengte = 6
+
     /// Naam van de opslagmap voor foto's (zie schema.sql).
     static let fotoBucket = "bankjes-fotos"
 

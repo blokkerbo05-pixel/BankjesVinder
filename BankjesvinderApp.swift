@@ -7,6 +7,7 @@ struct BankjesvinderApp: App {
     @StateObject private var keur = KeurStore()
     @StateObject private var thema = ThemaStore()
     @StateObject private var favorieten = FavorietenStore()
+    @StateObject private var account = AccountStore()
 
     var body: some Scene {
         WindowGroup {
@@ -16,6 +17,7 @@ struct BankjesvinderApp: App {
                 .environmentObject(keur)
                 .environmentObject(thema)
                 .environmentObject(favorieten)
+                .environmentObject(account)
                 .tint(Color.leaf)
                 .preferredColorScheme(thema.weergave.colorScheme)
         }
@@ -27,6 +29,7 @@ struct ContentView: View {
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
     @EnvironmentObject var thema: ThemaStore
+    @EnvironmentObject var account: AccountStore
     @StateObject private var verrassing = VerrassingStatus()
     @State private var tab = 0
     @State private var kaartGeheugen = KaartGeheugen()
@@ -51,6 +54,12 @@ struct ContentView: View {
         // Bij een ander thema worden de schermen één keer opnieuw opgebouwd, zodat alle kleuren meegaan.
         .id(thema.themaID)
         .environmentObject(verrassing)
+        .sheet(isPresented: $account.toonLogin) { LoginScherm().environmentObject(account) }
+        .alert("Even geduld", isPresented: Binding(get: { account.melding != nil }, set: { if !$0 { account.melding = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(account.melding ?? "")
+        }
         .overlay {
             if !welkomGezien {
                 WelkomScherm { open in

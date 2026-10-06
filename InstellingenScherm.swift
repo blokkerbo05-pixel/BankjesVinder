@@ -4,6 +4,7 @@ import SwiftUI
 struct InstellingenScherm: View {
     @EnvironmentObject var thema: ThemaStore
     @EnvironmentObject var store: BenchStore
+    @EnvironmentObject var account: AccountStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(Haptiek.sleutel) private var trillingenAan = true
     @AppStorage("themaUitgeklapt") private var themaUitgeklapt = false   // onthoudt of de themakeuze open of dicht staat
@@ -16,6 +17,8 @@ struct InstellingenScherm: View {
                     Text("Instellingen")
                         .font(.display(30))
                         .foregroundStyle(Color.ink)
+
+                    accountSectie
 
                     modusSectie
 
@@ -64,6 +67,39 @@ struct InstellingenScherm: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 24)
+            }
+        }
+    }
+
+    /// Inloggen of uitloggen.
+    private var accountSectie: some View {
+        sectie("Account") {
+            kaart {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(account.isIngelogd ? "Ingelogd" : "Niet ingelogd")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                        Text(account.email ?? "Log in om bankjes toe te voegen, te keuren en foto's te zetten.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.muted)
+                    }
+                    Spacer(minLength: 8)
+                    Button {
+                        Haptiek.licht()
+                        if account.isIngelogd {
+                            Task { await account.logUit() }
+                        } else {
+                            account.toonLogin = true
+                        }
+                    } label: {
+                        Text(account.isIngelogd ? "Uitloggen" : "Inloggen")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(account.isIngelogd ? Color.danger : Color.leaf)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 12)
             }
         }
     }
