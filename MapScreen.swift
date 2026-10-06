@@ -59,7 +59,10 @@ struct MapScreen: View {
                 mapCenter = context.region.center
                 visibleRegion = context.region
                 recluster()
-                store.loadTiles(in: context.region)
+                // Alleen automatisch laden als je niet te ver uitgezoomd bent.
+                if context.region.span.latitudeDelta * 111_000 < KaartStijl.autoLaadMaxMeters {
+                    store.loadTiles(in: context.region)
+                }
             }
             .onChange(of: store.all.count) {
                 recluster()
@@ -119,20 +122,44 @@ struct MapScreen: View {
                 banner(error, button: "Opnieuw") { retryLoading() }
             }
             if store.isLoadingOSM {
-                HStack(spacing: 6) {
+                pill {
                     ProgressView()
                         .controlSize(.small)
                     Text("Bankjes laden…")
-                        .font(.system(size: KaartStijl.laadTekstGrootte, weight: .semibold))
-                        .foregroundStyle(KaartStijl.laadTekstKleur)
                 }
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(Capsule().fill(KaartStijl.laadAchtergrond))
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+            } else if let region = visibleRegion,
+                      region.span.latitudeDelta * 111_000 >= KaartStijl.autoLaadMaxMeters {
+                // Ver uitgezoomd: niet automatisch laden, maar met een knop (of een melding als het gebied te groot is).
+                if store.tileCount(in: region) > KaartStijl.maxTegelsPerGebied {
+                    pill {
+                        Image(systemName: KaartStijl.inzoomMeldingIcoon)
+                        Text("Zoom verder in om bankjes te laden")
+                    }
+                } else if store.hasUnloadedTiles(in: region) {
+                    Button {
+                        store.loadTiles(in: region, force: true)
+                    } label: {
+                        pill {
+                            Image(systemName: KaartStijl.gebiedKnopIcoon)
+                            Text("Laad bankjes in dit gebied")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(.top, 8)
         .padding(.horizontal, 16)
+    }
+
+    /// Klein pilletje bovenaan (laden, knop of melding).
+    private func pill<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HStack(spacing: 6) { content() }
+            .font(.system(size: KaartStijl.laadTekstGrootte, weight: .semibold))
+            .foregroundStyle(KaartStijl.laadTekstKleur)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Capsule().fill(KaartStijl.laadAchtergrond))
+            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
     }
 
     private func banner(_ text: String, button: String, action: @escaping () -> Void) -> some View {

@@ -37,6 +37,8 @@ enum KaartStijl {
     /// Is de kaart zo ver ingezoomd (hoogte van het scherm in meters), dan staat alles los,
     /// ook als bankjes heel dicht bij elkaar staan. Iets ruimer dan de maximale inzoom hierboven.
     static let clusterUitBijMeters: Double = clusterMaxInzoomMeters * 1.15
+    /// Nooit meer dan dit aantal speldjes + bolletjes tegelijk tekenen (ver uitgezoomd wordt er dan ruimer samengevoegd).
+    static let maxZichtbareBolletjes = 60
     /// Hoe ruim er wordt ingezoomd als je op een cluster tikt (groter = minder ver inzoomen).
     static let clusterZoomRuimte: Double = 2.2
 
@@ -46,6 +48,12 @@ enum KaartStijl {
     static let laadTekstGrootte: CGFloat = 13
 
     // MARK: Bankjes laden (OpenStreetMap)
+    /// Automatisch laden alleen als de kaart minder dan dit (hoogte in meters) toont. Verder uitgezoomd: knop.
+    static let autoLaadMaxMeters: Double = 3000
+    /// Is het gebied groter dan dit aantal tegels, dan vragen we om verder in te zoomen.
+    static let maxTegelsPerGebied = 12
+    static let gebiedKnopIcoon = "arrow.down.circle"      // icoon van "Laad bankjes in dit gebied"
+    static let inzoomMeldingIcoon = "plus.magnifyingglass"
     /// Zoveel kaarttegels worden tegelijk opgehaald.
     static let maxTegelsTegelijk = 2
     /// Zoveel seconden wachten op één server voordat de volgende erbij wordt gevraagd.

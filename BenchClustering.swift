@@ -52,7 +52,33 @@ enum BenchClustering {
             return result
         }
 
-        let distance = KaartStijl.clusterAfstand
+        // Te veel bolletjes? Dan steeds ruimer samenvoegen, zodat de kaart nooit vol stipjes staat.
+        var distance = Double(KaartStijl.clusterAfstand)
+        var groups = group(visible, region: region, screen: screen, distance: distance)
+        var attempts = 0
+        while groups.count > KaartStijl.maxZichtbareBolletjes && attempts < 8 {
+            distance *= 1.6
+            groups = group(visible, region: region, screen: screen, distance: distance)
+            attempts += 1
+        }
+
+        for members in groups {
+            if members.count == 1 {
+                result.singles.append(members[0])
+            } else {
+                let lat = members.compactMap(\.lat).reduce(0, +) / Double(members.count)
+                let lon = members.compactMap(\.lon).reduce(0, +) / Double(members.count)
+                result.clusters.append(BenchCluster(
+                    id: "cluster-\(members[0].id)-\(members.count)",
+                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                    members: members))
+            }
+        }
+        return result
+    }
+
+    /// Verdeelt de bankjes over groepjes: bankjes die op het scherm dichter dan `distance` punten bij elkaar staan.
+    private static func group(_ visible: [Bench], region: MKCoordinateRegion, screen: CGSize, distance: Double) -> [[Bench]] {
         var seedPoints: [CGPoint] = []
         var groups: [[Bench]] = []
         var grid: [Cell: [Int]] = [:]
@@ -62,15 +88,15 @@ enum BenchClustering {
             // Plek op het scherm, in punten.
             let x = (lon - region.center.longitude) / region.span.longitudeDelta * Double(screen.width)
             let y = (region.center.latitude - lat) / region.span.latitudeDelta * Double(screen.height)
-            let cx = Int((x / Double(distance)).rounded(.down))
-            let cy = Int((y / Double(distance)).rounded(.down))
+            let cx = Int((x / distance).rounded(.down))
+            let cy = Int((y / distance).rounded(.down))
 
             var joined: Int?
             search: for dx in -1...1 {
                 for dy in -1...1 {
                     for index in grid[Cell(x: cx + dx, y: cy + dy)] ?? [] {
                         let seed = seedPoints[index]
-                        if hypot(Double(seed.x) - x, Double(seed.y) - y) < Double(distance) {
+                        if hypot(Double(seed.x) - x, Double(seed.y) - y) < distance {
                             joined = index
                             break search
                         }
@@ -86,20 +112,7 @@ enum BenchClustering {
                 grid[Cell(x: cx, y: cy), default: []].append(groups.count - 1)
             }
         }
-
-        for group in groups {
-            if group.count == 1 {
-                result.singles.append(group[0])
-            } else {
-                let lat = group.compactMap(\.lat).reduce(0, +) / Double(group.count)
-                let lon = group.compactMap(\.lon).reduce(0, +) / Double(group.count)
-                result.clusters.append(BenchCluster(
-                    id: "cluster-\(group[0].id)-\(group.count)",
-                    coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                    members: group))
-            }
-        }
-        return result
+        return groups
     }
 
     /// Het kaartstuk waarop de bankjes van een cluster los van elkaar komen te staan.

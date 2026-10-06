@@ -21,7 +21,6 @@ final class BenchStore: ObservableObject {
     private var cacheLoaded = false
     private var regionWaitingForCache: MKCoordinateRegion?
 
-    private let maxTilesPerRequest = 12          // niet meer tegels tegelijk aanvragen, ook niet als je ver uitzoomt
     private let cacheMaxAge: TimeInterval = 7 * 24 * 3600   // na een week opnieuw ophalen
     private let retryAfterFailure: TimeInterval = 20
 
@@ -87,30 +86,53 @@ final class BenchStore: ObservableObject {
         osm = osmByTile.values.flatMap { $0 }
     }
 
+    /// Het blok tegels dat het kaartbeeld bedekt.
+    private func tileRange(for region: MKCoordinateRegion) -> (x: ClosedRange<Int>, y: ClosedRange<Int>)? {
+        let center = region.center
+        let first = TileKey.containing(lat: center.latitude - region.span.latitudeDelta / 2,
+                                       lon: center.longitude - region.span.longitudeDelta / 2)
+        let last = TileKey.containing(lat: center.latitude + region.span.latitudeDelta / 2,
+                                      lon: center.longitude + region.span.longitudeDelta / 2)
+        guard last.x >= first.x, last.y >= first.y else { return nil }
+        return (first.x...last.x, first.y...last.y)
+    }
+
+    /// Hoeveel tegels het kaartbeeld bedekken.
+    func tileCount(in region: MKCoordinateRegion) -> Int {
+        guard let range = tileRange(for: region) else { return 0 }
+        return range.x.count * range.y.count
+    }
+
+    /// Moet deze tegel (opnieuw) worden opgehaald?
+    private func needsLoading(_ key: TileKey, now: Date, ignoreCooldown: Bool = false) -> Bool {
+        if activeTiles.contains(key) { return false }
+        if !ignoreCooldown, let failed = tileFailedAt[key], now.timeIntervalSince(failed) < retryAfterFailure { return false }
+        if let loaded = tileLoadedAt[key], now.timeIntervalSince(loaded) < cacheMaxAge { return false }
+        return true
+    }
+
+    /// Staat er in dit kaartbeeld nog iets dat geladen kan worden? (Voor de knop "Laad bankjes in dit gebied".)
+    func hasUnloadedTiles(in region: MKCoordinateRegion) -> Bool {
+        guard cacheLoaded, tileCount(in: region) <= KaartStijl.maxTegelsPerGebied,
+              let range = tileRange(for: region) else { return false }
+        let now = Date()
+        for x in range.x { for y in range.y where needsLoading(TileKey(x: x, y: y), now: now, ignoreCooldown: true) { return true } }
+        return false
+    }
+
     /// Haalt de bankjes op voor het stuk kaart dat in beeld is. Dichtstbijzijnde tegels eerst.
+    /// Is het gebied te groot (meer tegels dan KaartStijl.maxTegelsPerGebied), dan gebeurt er niets.
     func loadTiles(in region: MKCoordinateRegion, force: Bool = false) {
         // Wacht even tot de bewaarde tegels binnen zijn, anders halen we onnodig alles opnieuw op.
         guard cacheLoaded else {
             regionWaitingForCache = region
             return
         }
+        guard tileCount(in: region) <= KaartStijl.maxTegelsPerGebied,
+              let range = tileRange(for: region) else { return }
         if force { tileFailedAt.removeAll() }
 
         let center = region.center
-        let minLat = center.latitude - region.span.latitudeDelta / 2
-        let maxLat = center.latitude + region.span.latitudeDelta / 2
-        let minLon = center.longitude - region.span.longitudeDelta / 2
-        let maxLon = center.longitude + region.span.longitudeDelta / 2
-        let first = TileKey.containing(lat: minLat, lon: minLon)
-        let last = TileKey.containing(lat: maxLat, lon: maxLon)
-        guard last.x >= first.x, last.y >= first.y else { return }
-
-        // Ver uitgezoomd? Dan kijken we maar naar een venster rond het midden.
-        let centerTile = TileKey.containing(lat: center.latitude, lon: center.longitude)
-        let xLow = max(first.x, centerTile.x - 10), xHigh = min(last.x, centerTile.x + 10)
-        let yLow = max(first.y, centerTile.y - 10), yHigh = min(last.y, centerTile.y + 10)
-        guard xLow <= xHigh, yLow <= yHigh else { return }
-
         let cosLat = cos(center.latitude * .pi / 180)
         func distance(_ key: TileKey) -> Double {
             let dx = (key.center.longitude - center.longitude) * cosLat
@@ -119,18 +141,14 @@ final class BenchStore: ObservableObject {
         }
 
         var inView: [TileKey] = []
-        for x in xLow...xHigh { for y in yLow...yHigh { inView.append(TileKey(x: x, y: y)) } }
-        let nearest = inView.sorted { distance($0) < distance($1) }.prefix(maxTilesPerRequest)
+        for x in range.x { for y in range.y { inView.append(TileKey(x: x, y: y)) } }
 
         let now = Date()
-        let needed = nearest.filter { key in
-            if activeTiles.contains(key) { return false }
-            if let failed = tileFailedAt[key], now.timeIntervalSince(failed) < retryAfterFailure { return false }
-            if let loaded = tileLoadedAt[key], now.timeIntervalSince(loaded) < cacheMaxAge { return false }
-            return true
-        }
+        let needed = inView
+            .filter { needsLoading($0, now: now) }
+            .sorted { distance($0) < distance($1) }
         // Oude wachtrij vervangen: je hebt de kaart verschoven, dus de nieuwe plek gaat voor.
-        pendingTiles = Array(needed)
+        pendingTiles = needed
         pump()
     }
 
