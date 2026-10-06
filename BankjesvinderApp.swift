@@ -5,6 +5,7 @@ struct BankjesvinderApp: App {
     @StateObject private var store = BenchStore()
     @StateObject private var location = LocationManager()
     @StateObject private var keur = KeurStore()
+    @StateObject private var thema = ThemaStore()
 
     var body: some Scene {
         WindowGroup {
@@ -12,7 +13,9 @@ struct BankjesvinderApp: App {
                 .environmentObject(store)
                 .environmentObject(location)
                 .environmentObject(keur)
+                .environmentObject(thema)
                 .tint(Color.leaf)
+                .preferredColorScheme(thema.weergave.colorScheme)
         }
     }
 }
@@ -21,17 +24,29 @@ struct ContentView: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
+    @EnvironmentObject var thema: ThemaStore
     @StateObject private var verrassing = VerrassingStatus()
+    @State private var tab = 0
+    @State private var kaartGeheugen = KaartGeheugen()
 
     var body: some View {
-        TabView {
-            MapScreen()
+        TabView(selection: $tab) {
+            MapScreen(geheugen: kaartGeheugen)
                 .tabItem { Label("Kaart", systemImage: "map") }
+                .tag(0)
             ListScreen()
                 .tabItem { Label("Bankjes", systemImage: "list.bullet") }
+                .tag(1)
             KeurScherm()
                 .tabItem { Label("Keuren", systemImage: "hand.thumbsup") }
+                .tag(2)
+            InstellingenScherm()
+                .tabItem { Label("Instellingen", systemImage: "gearshape") }
+                .tag(3)
         }
+        .tint(Color.leaf)
+        // Bij een ander thema worden de schermen één keer opnieuw opgebouwd, zodat alle kleuren meegaan.
+        .id(thema.themaID)
         .environmentObject(verrassing)
         .overlay { VerrassingOverlay(status: verrassing) }
         .onAppear {

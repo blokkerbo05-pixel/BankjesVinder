@@ -7,6 +7,14 @@ struct MapScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
+    let geheugen: KaartGeheugen
+
+    init(geheugen: KaartGeheugen) {
+        self.geheugen = geheugen
+        // Waar de kaart het laatst stond (bijv. voor een themawissel), anders Amersfoort.
+        _position = State(initialValue: .region(geheugen.regio ?? KaartStijl.startRegio))
+        _didCenterOnUser = State(initialValue: geheugen.gecentreerd)
+    }
 
     // Begint op Amersfoort; zodra je locatie bekend is springt de kaart naar jou.
     @State private var position: MapCameraPosition = .region(KaartStijl.startRegio)
@@ -65,6 +73,7 @@ struct MapScreen: View {
             .onMapCameraChange(frequency: .onEnd) { context in
                 mapCenter = context.region.center
                 visibleRegion = context.region
+                geheugen.regio = context.region
                 recluster()
                 // Alleen automatisch laden als je niet te ver uitgezoomd bent.
                 if context.region.span.latitudeDelta * 111_000 < KaartStijl.autoLaadMaxMeters {
@@ -104,6 +113,7 @@ struct MapScreen: View {
             // De eerste keer dat we weten waar je bent: kaart naar jou toe.
             guard let newLocation, !didCenterOnUser else { return }
             didCenterOnUser = true
+            geheugen.gecentreerd = true
             withAnimation(.easeInOut(duration: 0.6)) {
                 position = .region(MKCoordinateRegion(center: newLocation.coordinate,
                                                       latitudinalMeters: KaartStijl.zoomOpJezelf,

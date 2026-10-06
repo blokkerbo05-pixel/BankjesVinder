@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-// Dezelfde kleuren als de web-versie: bosgroen, verweerd hout en groengrijs.
+// De kleuren van de app. Welke kleurenset gebruikt wordt (Bos, Nacht, Zand, Zee) staat in Themas.swift.
 extension UIColor {
     convenience init(hex: UInt32) {
         self.init(red: CGFloat((hex >> 16) & 0xFF) / 255,
@@ -18,16 +18,28 @@ extension Color {
         })
     }
 
-    static let appBg    = dynamic(0xEEF1EC, 0x141A16)
-    static let surface  = dynamic(0xFFFFFF, 0x1D2520)
-    static let ink      = dynamic(0x1E2B22, 0xE6ECE7)
-    static let muted    = dynamic(0x5D6B61, 0x9AA79E)
-    static let line     = dynamic(0xD3DACF, 0x2E3A32)
-    static let wood     = dynamic(0xA3561C, 0xE39A5C)
-    static let woodSoft = dynamic(0xF3E3D3, 0x3A2A1C)
-    static let leaf     = dynamic(0x2F6B45, 0x7FC398)
-    static let leafSoft = dynamic(0xDDEBE0, 0x1F3427)
-    static let danger   = dynamic(0xA3352B, 0xF08A7E)
+    init(hex: UInt32) {
+        self.init(UIColor(hex: hex))
+    }
+
+    /// Een kleur die meeverandert met het gekozen thema (Themas.swift) en met licht/donker.
+    static func themed(_ pick: @escaping (Palet) -> UInt32) -> Color {
+        Color(UIColor { traits in
+            let thema = Themas.huidig
+            return UIColor(hex: pick(traits.userInterfaceStyle == .dark ? thema.donker : thema.licht))
+        })
+    }
+
+    static let appBg    = themed { $0.appBg }
+    static let surface  = themed { $0.surface }
+    static let ink      = themed { $0.ink }
+    static let muted    = themed { $0.muted }
+    static let line     = themed { $0.line }
+    static let wood     = themed { $0.wood }
+    static let woodSoft = themed { $0.woodSoft }
+    static let leaf     = themed { $0.leaf }
+    static let leafSoft = themed { $0.leafSoft }
+    static let danger   = themed { $0.danger }
 }
 
 extension Font {

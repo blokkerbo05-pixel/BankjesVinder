@@ -99,6 +99,16 @@ enum KaartStijl {
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
 
+    // MARK: Hoeken (overal dezelfde afrondingen)
+    static let hoekKlein: CGFloat  = 10
+    static let hoekMiddel: CGFloat = 14
+    static let hoekGroot: CGFloat  = 22
+
+    // MARK: Instellingen-scherm
+    static let instellingKopGrootte: CGFloat = 13   // kopjes als THEMA en WEERGAVE
+    static let themaTegelHoogte: CGFloat     = 58
+    static let themaStipGrootte: CGFloat     = 20
+
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
     static let tegelMaxDagen: Double = 30
