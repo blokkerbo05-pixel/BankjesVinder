@@ -1,0 +1,37 @@
+import SwiftUI
+
+@main
+struct BankjesvinderApp: App {
+    @StateObject private var store = BenchStore()
+    @StateObject private var location = LocationManager()
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(store)
+                .environmentObject(location)
+                .tint(Color.leaf)
+        }
+    }
+}
+
+struct ContentView: View {
+    @EnvironmentObject var store: BenchStore
+    @EnvironmentObject var location: LocationManager
+
+    var body: some View {
+        TabView {
+            MapScreen()
+                .tabItem { Label("Kaart", systemImage: "map") }
+            ListScreen()
+                .tabItem { Label("Bankjes", systemImage: "list.bullet") }
+        }
+        .onAppear { location.start() }
+        .onReceive(location.$location) { newLocation in
+            // Zodra we weten waar je bent: één keer de bankjes in de buurt ophalen.
+            guard let newLocation, !store.didAutoLoad else { return }
+            store.didAutoLoad = true
+            Task { await store.loadOSM(near: newLocation.coordinate) }
+        }
+    }
+}
