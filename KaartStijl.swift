@@ -92,6 +92,10 @@ enum KaartStijl {
     static let keurStempelRand: CGFloat        = 3
     static let keurStatusTekstGrootte: CGFloat = 12     // klein statuslabel op het detailkaartje
     static let keurStatusNeutraalKleur         = Color.muted    // "2/5 stemmen" en "In beoordeling"
+    static let fotoMaxPixels: CGFloat          = 1200   // foto's worden hiertoe verkleind (langste kant)
+    static let fotoJpegKwaliteit: CGFloat      = 0.8
+    static let fotoDetailHoogte: CGFloat       = 150    // foto op het detailkaartje
+    static let fotoKnopIcoon                   = "camera"
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
 

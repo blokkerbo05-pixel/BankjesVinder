@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import MapKit
+import UIKit
 
 /// Houdt alle bankjes bij: je eigen bankjes (opgeslagen op je iPhone)
 /// en de bankjes uit OpenStreetMap rond je locatie.
@@ -10,6 +11,8 @@ final class BenchStore: ObservableObject {
     @Published private(set) var osm: [Bench] = []
     @Published private(set) var isLoadingOSM = false
     @Published var osmError: String?
+    /// Wordt hoger telkens als er een foto is toegevoegd of gewijzigd, zodat schermen hem opnieuw laden.
+    @Published private(set) var fotoVersie = 0
     var didAutoLoad = false
 
     // Bankjes uit OpenStreetMap, per tegel (stukje kaart).
@@ -52,8 +55,14 @@ final class BenchStore: ObservableObject {
         save()
     }
 
+    /// Bewaart een foto bij een eigen bankje (verkleind) en laat schermen verversen.
+    func bewaarFoto(_ image: UIImage, voor bench: Bench) {
+        if BankjesFotos.bewaar(image, voor: bench.id) { fotoVersie += 1 }
+    }
+
     func delete(_ bench: Bench) {
         own.removeAll { $0.id == bench.id }
+        BankjesFotos.verwijder(voor: bench.id)
         save()
     }
 

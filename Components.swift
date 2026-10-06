@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import UIKit
+import PhotosUI
 
 /// Zet kleine knopjes (chips) naast elkaar en laat ze doorlopen naar de volgende regel.
 struct FlowLayout: Layout {
@@ -177,9 +178,20 @@ struct BenchCard: View {
     let bench: Bench
     let distance: CLLocationDistance?
     @State private var confirmDelete = false
+    @State private var foto: UIImage?
+    @State private var gekozenFoto: PhotosPickerItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let foto {
+                Image(uiImage: foto)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: KaartStijl.fotoDetailHoogte)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(bench.name)
@@ -206,6 +218,16 @@ struct BenchCard: View {
             }
 
             keurStatus
+
+            if bench.source == .eigen {
+                PhotosPicker(selection: $gekozenFoto, matching: .images) {
+                    Label(foto == nil ? "Foto toevoegen" : "Foto wijzigen", systemImage: KaartStijl.fotoKnopIcoon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.wood)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.wood.opacity(0.5), lineWidth: 1.5))
+                }
+            }
 
             if let distance {
                 Text("\(formatDistance(distance)) · \(walkingMinutes(distance))")
@@ -261,6 +283,19 @@ struct BenchCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.surface))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line, lineWidth: 1.5))
+        .task(id: "\(bench.id)-\(store.fotoVersie)") {
+            foto = bench.source == .eigen ? BankjesFotos.afbeelding(voor: bench.id) : nil
+        }
+        .onChange(of: gekozenFoto) {
+            guard let item = gekozenFoto else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    store.bewaarFoto(image, voor: bench)
+                }
+                gekozenFoto = nil
+            }
+        }
     }
 }
 
