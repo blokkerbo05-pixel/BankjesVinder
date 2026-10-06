@@ -6,6 +6,7 @@ import UIKit
 struct MapScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var keur: KeurStore
 
     // Begint op Amersfoort; zodra je locatie bekend is springt de kaart naar jou.
     @State private var position: MapCameraPosition = .region(KaartStijl.startRegio)
@@ -19,7 +20,13 @@ struct MapScreen: View {
     /// De 10 bankjes die het dichtst bij jou staan (alleen opnieuw berekend als dat nodig is).
     @State private var nearest: [Bench] = []
 
-    private var mapped: [Bench] { store.all.filter { $0.coordinate != nil } }
+    /// Bankjes met een plek op de kaart. Afgekeurde bankjes alleen als KeurInstellingen dat toestaat.
+    private var mapped: [Bench] {
+        store.all.filter { bench in
+            guard bench.coordinate != nil else { return false }
+            return KeurInstellingen.toonAfgekeurdeBankjes || keur.status(of: bench.id) != .afgekeurd
+        }
+    }
 
     private var selected: Bench? { store.all.first { $0.id == selectedID } }
 
@@ -69,6 +76,10 @@ struct MapScreen: View {
                 refreshNearest()
             }
             .onChange(of: location.location) { refreshNearest() }
+            .onChange(of: keur.data.records.count) {
+                recluster()
+                refreshNearest()
+            }
             .onChange(of: selectedID) { recluster() }
             .onAppear {
                 recluster()
@@ -334,7 +345,7 @@ struct MapScreen: View {
         let dLat = radius / 111_000
         let dLon = dLat / max(cos(here.coordinate.latitude * .pi / 180), 0.01)
         var close: [(bench: Bench, distance: CLLocationDistance)] = []
-        for bench in store.all {
+        for bench in mapped {
             guard let lat = bench.lat, let lon = bench.lon,
                   abs(lat - here.coordinate.latitude) <= dLat,
                   abs(lon - here.coordinate.longitude) <= dLon,

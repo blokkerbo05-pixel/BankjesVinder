@@ -173,6 +173,7 @@ enum MapsOpener {
 /// Kaartje met alle info over één bankje (zelfde stijl als de web-versie).
 struct BenchCard: View {
     @EnvironmentObject var store: BenchStore
+    @EnvironmentObject var keur: KeurStore
     let bench: Bench
     let distance: CLLocationDistance?
     @State private var confirmDelete = false
@@ -203,6 +204,8 @@ struct BenchCard: View {
                     .font(.system(size: 15))
                     .foregroundStyle(Color.ink)
             }
+
+            keurStatus
 
             if let distance {
                 Text("\(formatDistance(distance)) · \(walkingMinutes(distance))")
@@ -258,6 +261,41 @@ struct BenchCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.surface))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.line, lineWidth: 1.5))
+    }
+}
+
+extension BenchCard {
+    /// Klein label met de keurstatus ("2/5 stemmen", "Goedgekeurd ✓", "Afgekeurd") en de reden van de agent.
+    @ViewBuilder
+    fileprivate var keurStatus: some View {
+        let status = keur.status(of: bench.id)
+        let tekst: String = {
+            switch status {
+            case .nieuw, .stemmen: return "\(keur.aantalStemmen(for: bench.id))/\(KeurInstellingen.stemmenNodig) stemmen"
+            case .inBeoordeling: return "In beoordeling…"
+            case .goedgekeurd: return "Goedgekeurd ✓"
+            case .afgekeurd: return "Afgekeurd"
+            }
+        }()
+        let kleur: Color = {
+            switch status {
+            case .goedgekeurd: return KaartStijl.keurGoedKleur
+            case .afgekeurd: return KaartStijl.keurSlechtKleur
+            default: return KaartStijl.keurStatusNeutraalKleur
+            }
+        }()
+        VStack(alignment: .leading, spacing: 2) {
+            Text(tekst)
+                .font(.system(size: KaartStijl.keurStatusTekstGrootte, weight: .bold))
+                .foregroundStyle(kleur)
+                .padding(.horizontal, 8).padding(.vertical, 2)
+                .background(Capsule().fill(kleur.opacity(0.12)))
+            if let reden = keur.oordeel(of: bench.id)?.reden {
+                Text(reden)
+                    .font(.system(size: KaartStijl.keurStatusTekstGrootte))
+                    .foregroundStyle(Color.muted)
+            }
+        }
     }
 }
 

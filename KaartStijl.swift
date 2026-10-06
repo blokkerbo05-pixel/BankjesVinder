@@ -90,6 +90,8 @@ enum KaartStijl {
     static let keurWegvliegSeconden: Double    = 0.25
     static let keurStempelGrootte: CGFloat     = 22     // tekst van de stempel (GOED BANKJE / GEEN GOED BANKJE)
     static let keurStempelRand: CGFloat        = 3
+    static let keurStatusTekstGrootte: CGFloat = 12     // klein statuslabel op het detailkaartje
+    static let keurStatusNeutraalKleur         = Color.muted    // "2/5 stemmen" en "In beoordeling"
     static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
     static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
 
