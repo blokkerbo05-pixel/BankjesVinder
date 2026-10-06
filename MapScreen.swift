@@ -49,7 +49,7 @@ struct MapScreen: View {
                         } label: {
                             BenchPin(isOwn: bench.source == .eigen, isSelected: bench.id == selectedID)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.indruk)
                     }
                     .annotationTitles(.hidden)
                 }
@@ -60,7 +60,7 @@ struct MapScreen: View {
                         } label: {
                             ClusterPin(count: cluster.count)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.indruk)
                     }
                     .annotationTitles(.hidden)
                 }
@@ -214,7 +214,10 @@ struct MapScreen: View {
     // MARK: - Knop: bankje toevoegen
 
     private var addButton: some View {
-        Button { showAdd = true } label: {
+        Button {
+            Haptiek.licht()
+            showAdd = true
+        } label: {
             Image(systemName: KaartStijl.toevoegIcoon)
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(KaartStijl.toevoegKnopKleur)
@@ -227,6 +230,7 @@ struct MapScreen: View {
     }
 
     private func centerOnUser() {
+        Haptiek.licht()
         if location.isDenied {
             showLocationHelp = true
             return
@@ -254,7 +258,8 @@ struct MapScreen: View {
         if let bench = selected {
             VStack(alignment: .trailing, spacing: 6) {
                 Button {
-                    selectedID = nil
+                    Haptiek.licht()
+                    withAnimation(Animaties.veer) { selectedID = nil }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
@@ -268,7 +273,7 @@ struct MapScreen: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .transition(Animaties.schuifOnder)
         } else {
             VStack(spacing: 12) {
                 if !nearest.isEmpty {
@@ -282,6 +287,7 @@ struct MapScreen: View {
                             HStack(spacing: 8) {
                                 ForEach(nearest) { bench in
                                     nearbyTile(bench)
+                                        .transition(Animaties.verschijn)
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -289,8 +295,11 @@ struct MapScreen: View {
                     }
                     .padding(.vertical, KaartStijl.dichtbijPaneelPadding)
                     .background(KaartStijl.dichtbijPaneelAchtergrond)
+                    .transition(Animaties.schuifOnder)
                 }
             }
+            .animation(Animaties.veer, value: nearest)
+            .transition(Animaties.schuifOnder)
         }
     }
 
@@ -323,8 +332,9 @@ struct MapScreen: View {
     // MARK: - Acties
 
     private func select(_ bench: Bench) {
+        Haptiek.zacht()
+        withAnimation(Animaties.veer) { selectedID = bench.id }
         withAnimation(.easeInOut(duration: 0.3)) {
-            selectedID = bench.id
             if let c = bench.coordinate {
                 position = .region(MKCoordinateRegion(center: c, latitudinalMeters: KaartStijl.zoomOpBankje, longitudinalMeters: KaartStijl.zoomOpBankje))
             }
@@ -333,11 +343,13 @@ struct MapScreen: View {
 
     /// Bepaalt opnieuw welke bankjes los staan en welke een cluster vormen.
     private func recluster() {
-        clustered = BenchClustering.make(
+        let nieuw = BenchClustering.make(
             benches: mapped,
             region: visibleRegion ?? KaartStijl.startRegio,
             screen: UIScreen.main.bounds.size,
             keepLooseID: selectedID)
+        // Speldjes en clusters verschijnen en verdwijnen zacht in plaats van te springen.
+        withAnimation(Animaties.veer) { clustered = nieuw }
     }
 
     /// Zoekt de 10 dichtstbijzijnde bankjes, alleen binnen de straal uit KaartStijl (snel, ook bij heel veel bankjes).
@@ -363,6 +375,7 @@ struct MapScreen: View {
 
     /// Tik op een cluster: zoom in tot de bankjes los staan.
     private func zoom(into cluster: BenchCluster) {
+        Haptiek.zacht()
         withAnimation(.easeInOut(duration: 0.4)) {
             position = .region(BenchClustering.zoomRegion(for: cluster, screen: UIScreen.main.bounds.size))
         }

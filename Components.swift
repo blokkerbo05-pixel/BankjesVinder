@@ -117,6 +117,7 @@ struct AddBenchButton: View {
 struct BenchPin: View {
     let isOwn: Bool
     let isSelected: Bool
+    @State private var getoond = false
     var body: some View {
         let size = isSelected ? KaartStijl.geselecteerdeStipGrootte : KaartStijl.stipGrootte
         ZStack {
@@ -129,13 +130,17 @@ struct BenchPin: View {
                 .font(.system(size: isSelected ? KaartStijl.geselecteerdIcoonGrootte : KaartStijl.icoonGrootte, weight: .bold))
                 .foregroundStyle(KaartStijl.icoonKleur)
         }
-        .animation(.spring(duration: 0.25), value: isSelected)
+        // Veert op bij selecteren en groeit zacht in als het speldje voor het eerst verschijnt.
+        .animation(Animaties.opveer, value: isSelected)
+        .scaleEffect(getoond || Animaties.beperkt ? 1 : Animaties.verschijnSchaal)
+        .onAppear { withAnimation(Animaties.opveer ?? Animaties.fade) { getoond = true } }
     }
 }
 
 /// Groen bolletje met het aantal bankjes erin.
 struct ClusterPin: View {
     let count: Int
+    @State private var getoond = false
     var body: some View {
         let size = count >= 10 ? KaartStijl.clusterGrootteGroot : KaartStijl.clusterGrootte
         Text("\(count)")
@@ -146,6 +151,9 @@ struct ClusterPin: View {
             .background(Circle().fill(KaartStijl.clusterKleur))
             .overlay(Circle().stroke(KaartStijl.randKleur, lineWidth: KaartStijl.randDikte))
             .shadow(color: .black.opacity(KaartStijl.schaduw), radius: 3, y: 2)
+            // Groeit zacht in als het bolletje verschijnt (bijv. als bankjes samenkomen).
+            .scaleEffect(getoond || Animaties.beperkt ? 1 : Animaties.verschijnSchaal)
+            .onAppear { withAnimation(Animaties.opveer ?? Animaties.fade) { getoond = true } }
     }
 }
 
@@ -180,6 +188,7 @@ struct BenchCard: View {
     @State private var confirmDelete = false
     @State private var foto: UIImage?
     @State private var gekozenFoto: PhotosPickerItem?
+    @State private var verschenen = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -283,6 +292,8 @@ struct BenchCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
         .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
+        .opacity(verschenen ? 1 : 0)
+        .onAppear { withAnimation(Animaties.fade) { verschenen = true } }
         .task(id: "\(bench.id)-\(store.fotoVersie)") {
             foto = bench.source == .eigen ? BankjesFotos.afbeelding(voor: bench.id) : nil
         }

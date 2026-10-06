@@ -140,7 +140,7 @@ struct KeurScherm: View {
                     vlieg(goed: waarde.translation.width > 0)
                 } else {
                     // Niet ver genoeg: terugveren.
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { slepen = .zero }
+                    withAnimation(Animaties.terugveer) { slepen = .zero }
                 }
             }
     }
@@ -150,11 +150,11 @@ struct KeurScherm: View {
         guard !vliegtWeg, !stapel.isEmpty else { return }
         vliegtWeg = true
         Haptiek.licht()
-        withAnimation(.easeIn(duration: KaartStijl.keurWegvliegSeconden)) {
+        withAnimation(Animaties.wegvlieg) {
             slepen = CGSize(width: goed ? KaartStijl.keurWegvliegAfstand : -KaartStijl.keurWegvliegAfstand,
                             height: slepen.height)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + KaartStijl.keurWegvliegSeconden) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Animaties.wegvliegWachttijd) {
             stem(goed: goed)
             // De volgende kaart staat al klaar: zonder animatie terug naar het midden.
             var zonderAnimatie = Transaction()
@@ -172,6 +172,7 @@ struct KeurScherm: View {
     }
 
     private func maakOngedaan() {
+        Haptiek.selectie()
         guard !vliegtWeg, let id = keur.maakLaatsteStemOngedaan(),
               let bench = store.all.first(where: { $0.id == id }) else { return }
         refresh(vooraan: bench)   // dat bankje komt weer bovenaan
