@@ -6,9 +6,14 @@ final class KeurStore: ObservableObject {
     @Published private(set) var data: KeurData
 
     private let opslag: KeurOpslag
+    private let agent: BeoordelingsAgent
 
-    init(opslag: KeurOpslag = LokaleKeurOpslag()) {
+    /// Zoekt een bankje op via zijn ID (wordt door de app ingesteld). De agent heeft het bankje zelf nodig.
+    var zoekBankje: (String) -> Bench? = { _ in nil }
+
+    init(opslag: KeurOpslag = LokaleKeurOpslag(), agent: BeoordelingsAgent = KeurAgent.actief) {
         self.opslag = opslag
+        self.agent = agent
         let geladen = opslag.laad()
         data = geladen
         opslag.bewaar(geladen)   // bewaart meteen het gebruikers-ID als dat nieuw is
@@ -52,10 +57,10 @@ final class KeurStore: ObservableObject {
     // MARK: Stemmen
 
     /// Brengt de stem van deze gebruiker uit (een eerdere stem op hetzelfde bankje wordt vervangen).
-    func stem(op benchID: String, goed: Bool) {
-        data.stemmen.removeAll { $0.benchID == benchID && $0.userID == data.userID }
-        data.stemmen.append(Stem(benchID: benchID, userID: data.userID, goed: goed, date: Date()))
-        herbereken(benchID)
+    func stem(op bench: Bench, goed: Bool) {
+        data.stemmen.removeAll { $0.benchID == bench.id && $0.userID == data.userID }
+        data.stemmen.append(Stem(benchID: bench.id, userID: data.userID, goed: goed, date: Date()))
+        herbereken(bench.id)
     }
 
     /// Haalt de laatste stem van deze gebruiker terug. Geeft het bankje terug waar die stem op was.
@@ -81,12 +86,25 @@ final class KeurStore: ObservableObject {
         if aantal == 0 {
             data.records[benchID] = nil   // terug naar "nieuw"
         } else if aantal >= KeurInstellingen.stemmenNodig {
-            // Genoeg stemmen: eindbeoordeling. (De agent wordt in de volgende stap aangesloten.)
+            // Genoeg stemmen: eindbeoordeling door de agent.
             zet(benchID, status: .inBeoordeling, oordeel: nil)
+            laatBeoordelen(benchID)
         } else {
             zet(benchID, status: .stemmen, oordeel: nil)
         }
         opslag.bewaar(data)
+    }
+
+    /// Vraagt de agent om het eindoordeel en zet de status daarna op goedgekeurd of afgekeurd.
+    private func laatBeoordelen(_ benchID: String) {
+        guard let bench = zoekBankje(benchID) else { return }   // bankje niet bekend: blijft 'inBeoordeling'
+        let stemmen = self.stemmen(for: benchID)
+        Task {
+            let oordeel = await agent.beoordeel(bench, stemmen: stemmen)
+            // Alleen toepassen als er intussen niets veranderd is aan de stemmen.
+            guard status(of: benchID) == .inBeoordeling, self.stemmen(for: benchID) == stemmen else { return }
+            zet(benchID, status: oordeel.goedgekeurd ? .goedgekeurd : .afgekeurd, oordeel: oordeel)
+        }
     }
 
     func zet(_ benchID: String, status: KeurStatus, oordeel: Oordeel?) {
