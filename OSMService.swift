@@ -44,6 +44,11 @@ enum OSMService {
         "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     ]
 
+    /// Verhoog dit getal als de gegevens per tegel veranderen (bijv. een nieuw kenmerk).
+    /// Tegels met een lager nummer blijven zichtbaar, maar worden eenmalig opnieuw opgehaald.
+    /// 1 = bankjes, 2 = bankjes met prullenbak-kenmerk.
+    static let cacheVersie = 2
+
     /// De server die de vorige keer het snelst was; die vragen we als eerste.
     private static let fastestKey = "osmSnelsteServer"
 
@@ -62,7 +67,14 @@ enum OSMService {
     /// Eerst vragen we één server. Komt er binnen een paar seconden geen antwoord,
     /// dan vragen we de volgende erbij (en zo verder). Het eerste goede antwoord wint.
     static func benches(in tile: TileKey) async throws -> [Bench] {
-        let query = "[out:json][timeout:20];node[\"amenity\"=\"bench\"](\(tile.south),\(tile.west),\(tile.north),\(tile.east));out body;"
+        // Eén aanvraag voor bankjes én prullenbakken. Prullenbakken zoeken we iets ruimer dan de tegel,
+        // zodat een bankje aan de rand ook een prullenbak aan de overkant van de rand "ziet".
+        let marge = KeurInstellingen.prullenbakAfstandMeters / 111_000 * 1.2
+        let margeLon = marge / max(cos(tile.center.latitude * .pi / 180), 0.01)
+        let query = "[out:json][timeout:20];("
+            + "node[\"amenity\"=\"bench\"](\(tile.south),\(tile.west),\(tile.north),\(tile.east));"
+            + "node[\"amenity\"=\"waste_basket\"](\(tile.south - marge),\(tile.west - margeLon),\(tile.north + marge),\(tile.east + margeLon));"
+            + ");out body;"
         var allowed = CharacterSet.alphanumerics
         allowed.insert(charactersIn: "-._~")
         let body = "data=" + (query.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")
@@ -132,10 +144,31 @@ enum OSMService {
         if decoded.elements.isEmpty, decoded.remark != nil {
             throw URLError(.cannotParseResponse)
         }
-        return decoded.elements.compactMap(makeBench)
+
+        let bins: [(lat: Double, lon: Double)] = decoded.elements.compactMap { element in
+            guard element.tags?["amenity"] == "waste_basket", let lat = element.lat, let lon = element.lon else { return nil }
+            return (lat, lon)
+        }
+        return decoded.elements
+            .filter { $0.tags?["amenity"] == "bench" }
+            .compactMap { makeBench($0, bins: bins) }
     }
 
-    private static func makeBench(_ element: Element) -> Bench? {
+    /// Staat er een prullenbak binnen de ingestelde afstand van deze plek?
+    private static func hasBinNearby(lat: Double, lon: Double, bins: [(lat: Double, lon: Double)]) -> Bool {
+        let meters = KeurInstellingen.prullenbakAfstandMeters
+        let dLat = meters / 111_000
+        let dLon = dLat / max(cos(lat * .pi / 180), 0.01)
+        let here = CLLocation(latitude: lat, longitude: lon)
+        for bin in bins {
+            // Eerst een goedkope controle, dan pas de echte afstand.
+            guard abs(bin.lat - lat) <= dLat, abs(bin.lon - lon) <= dLon else { continue }
+            if here.distance(from: CLLocation(latitude: bin.lat, longitude: bin.lon)) <= meters { return true }
+        }
+        return false
+    }
+
+    private static func makeBench(_ element: Element, bins: [(lat: Double, lon: Double)]) -> Bench? {
         guard let lat = element.lat, let lon = element.lon else { return nil }
         let tags = element.tags ?? [:]
 
@@ -143,6 +176,7 @@ enum OSMService {
         if tags["backrest"] == "yes" { features.append("Rugleuning") }
         if tags["armrest"] == "yes" { features.append("Armleuning") }
         if tags["covered"] == "yes" { features.append("Overdekt") }
+        if hasBinNearby(lat: lat, lon: lon, bins: bins) { features.append(BenchTags.prullenbak) }
 
         var notes: [String] = []
         let materials = ["wood": "hout", "metal": "metaal", "stone": "steen", "concrete": "beton", "plastic": "kunststof"]
@@ -171,6 +205,23 @@ struct CachedTile: Codable {
     let key: TileKey
     let fetchedAt: Date
     let benches: [Bench]
+    /// Met welke versie van OSMService.cacheVersie deze tegel is opgehaald. Oude tegels (zonder dit veld) zijn versie 0.
+    let versie: Int
+
+    init(key: TileKey, fetchedAt: Date, benches: [Bench], versie: Int = OSMService.cacheVersie) {
+        self.key = key
+        self.fetchedAt = fetchedAt
+        self.benches = benches
+        self.versie = versie
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        key = try container.decode(TileKey.self, forKey: .key)
+        fetchedAt = try container.decode(Date.self, forKey: .fetchedAt)
+        benches = try container.decode([Bench].self, forKey: .benches)
+        versie = try container.decodeIfPresent(Int.self, forKey: .versie) ?? 0
+    }
 }
 
 enum TileCache {

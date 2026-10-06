@@ -30,7 +30,8 @@ struct Bench: Identifiable, Codable, Hashable {
 }
 
 enum BenchTags {
-    static let all = ["Rugleuning", "Armleuning", "Schaduw", "Uitzicht", "Bij water", "Rustig", "Picknicktafel", "Overdekt"]
+    static let prullenbak = "Prullenbak"
+    static let all = ["Rugleuning", "Armleuning", "Schaduw", "Uitzicht", "Bij water", "Rustig", "Picknicktafel", "Overdekt", prullenbak]
 }
 
 func formatDistance(_ meters: CLLocationDistance) -> String {

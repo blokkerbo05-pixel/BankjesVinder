@@ -81,7 +81,8 @@ final class BenchStore: ObservableObject {
     private func finishCacheLoad(_ tiles: [CachedTile]) {
         for tile in tiles where osmByTile[tile.key] == nil {
             osmByTile[tile.key] = tile.benches
-            tileLoadedAt[tile.key] = tile.fetchedAt
+            // Oudere versie (bijv. zonder prullenbak-info)? Dan tonen we hem wel, maar halen we hem opnieuw op.
+            tileLoadedAt[tile.key] = tile.versie >= OSMService.cacheVersie ? tile.fetchedAt : .distantPast
         }
         cacheLoaded = true
         rebuildOSM()

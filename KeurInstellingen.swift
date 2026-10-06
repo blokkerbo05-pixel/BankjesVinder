@@ -27,4 +27,10 @@ enum KeurInstellingen {
 
     /// In de Keuren-tab komen alleen bankjes binnen deze afstand (in meters) van jou.
     static let keurStraalMeters: CLLocationDistance = 3000
+
+    // MARK: Kenmerken van bankjes (geen stemmen, maar wel een instelling)
+
+    /// Een bankje uit OpenStreetMap krijgt automatisch het kenmerk "Prullenbak"
+    /// als er binnen deze afstand (in meters) een prullenbak staat.
+    static let prullenbakAfstandMeters: Double = 20
 }
