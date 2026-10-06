@@ -12,6 +12,12 @@ jobs:
       - name: Code ophalen
         uses: actions/checkout@v4
 
+      - name: Bouw-info invullen (buildnummer, commit en datum)
+        run: |
+          printf 'enum BuildInfo {\n    static let buildnummer = "%s"\n    static let commit = "%s"\n    static let datum = "%s"\n}\n' \
+            "${{ github.run_number }}" "$(echo "${GITHUB_SHA}" | cut -c1-7)" "$(date -u '+%Y-%m-%d %H:%M UTC')" > BuildInfo.swift
+          cat BuildInfo.swift
+
       - name: XcodeGen installeren
         run: brew install xcodegen
 

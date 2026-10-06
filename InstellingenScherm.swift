@@ -47,6 +47,27 @@ struct InstellingenScherm: View {
                         .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
                         .onChange(of: trillingenAan) { Haptiek.licht() }
                     }
+
+                    sectie("Binnenkort") {
+                        kaart {
+                            ForEach(Array(Binnenkort.items.enumerated()), id: \.element.id) { index, item in
+                                binnenkortRij(item)
+                                if index < Binnenkort.items.count - 1 { Divider().overlay(Color.line) }
+                            }
+                        }
+                    }
+
+                    sectie("Over") {
+                        kaart {
+                            overRij("Versie", versie)
+                            Divider().overlay(Color.line)
+                            overRij("Build", BuildInfo.buildnummer)
+                            Divider().overlay(Color.line)
+                            overRij("Commit", BuildInfo.commit)
+                            Divider().overlay(Color.line)
+                            overRij("Datum", BuildInfo.datum)
+                        }
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -55,7 +76,54 @@ struct InstellingenScherm: View {
         }
     }
 
+    private var versie: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    }
+
     // MARK: Onderdelen
+
+    /// Kaartje om een groepje rijen heen.
+    private func kaart<Inhoud: View>(@ViewBuilder _ inhoud: () -> Inhoud) -> some View {
+        VStack(spacing: 0) { inhoud() }
+            .padding(.horizontal, 14)
+            .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
+            .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
+    }
+
+    /// Een toekomstige functie: niet aantikbaar, met een klein "binnenkort"-label.
+    private func binnenkortRij(_ item: BinnenkortItem) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.icoon)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.muted)
+                .frame(width: 24)
+            Text(item.titel)
+                .font(.system(size: 16))
+                .foregroundStyle(Color.ink)
+            Spacer(minLength: 8)
+            Text("binnenkort")
+                .font(.system(size: KaartStijl.binnenkortLabelGrootte, weight: .bold))
+                .foregroundStyle(Color.leaf)
+                .padding(.horizontal, 8).padding(.vertical, 3)
+                .background(Capsule().fill(Color.leafSoft))
+        }
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func overRij(_ titel: String, _ waarde: String) -> some View {
+        HStack {
+            Text(titel)
+                .font(.system(size: 16))
+                .foregroundStyle(Color.ink)
+            Spacer(minLength: 8)
+            Text(waarde)
+                .font(.system(size: 15, design: .monospaced))
+                .foregroundStyle(Color.muted)
+        }
+        .padding(.vertical, 12)
+        .accessibilityElement(children: .combine)
+    }
 
     private func sectie<Inhoud: View>(_ titel: String, @ViewBuilder _ inhoud: () -> Inhoud) -> some View {
         VStack(alignment: .leading, spacing: 10) {

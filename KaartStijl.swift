@@ -108,6 +108,7 @@ enum KaartStijl {
     static let instellingKopGrootte: CGFloat = 13   // kopjes als THEMA en WEERGAVE
     static let themaTegelHoogte: CGFloat     = 58
     static let themaStipGrootte: CGFloat     = 20
+    static let binnenkortLabelGrootte: CGFloat = 11  // klein "binnenkort"-label
 
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
