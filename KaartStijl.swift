@@ -32,8 +32,11 @@ enum KaartStijl {
     static let clusterTekstGrootte: CGFloat = 16
     /// Bankjes die op het scherm dichter dan dit (in punten) bij elkaar staan, worden samengevoegd.
     static let clusterAfstand: CGFloat = 44
-    /// Is de kaart zo ver ingezoomd (hoogte van het scherm in meters), dan staat alles los.
-    static let clusterUitBijMeters: Double = 150
+    /// Tik op een cluster: de kaart zoomt nooit verder in dan dit (hoogte van het scherm in meters).
+    static let clusterMaxInzoomMeters: Double = 200
+    /// Is de kaart zo ver ingezoomd (hoogte van het scherm in meters), dan staat alles los,
+    /// ook als bankjes heel dicht bij elkaar staan. Iets ruimer dan de maximale inzoom hierboven.
+    static let clusterUitBijMeters: Double = clusterMaxInzoomMeters * 1.15
     /// Hoe ruim er wordt ingezoomd als je op een cluster tikt (groter = minder ver inzoomen).
     static let clusterZoomRuimte: Double = 2.2
 

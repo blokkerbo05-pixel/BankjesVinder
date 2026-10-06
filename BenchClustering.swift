@@ -102,22 +102,29 @@ enum BenchClustering {
         return result
     }
 
-    /// Het kaartstukje waarop de bankjes van een cluster los van elkaar komen te staan.
-    static func zoomRegion(for cluster: BenchCluster) -> MKCoordinateRegion {
+    /// Het kaartstuk waarop de bankjes van een cluster los van elkaar komen te staan.
+    /// Zoomt nooit verder in dan KaartStijl.clusterMaxInzoomMeters schermhoogte.
+    static func zoomRegion(for cluster: BenchCluster, screen: CGSize) -> MKCoordinateRegion {
         let lats = cluster.members.compactMap(\.lat)
         let lons = cluster.members.compactMap(\.lon)
         guard let minLat = lats.min(), let maxLat = lats.max(),
-              let minLon = lons.min(), let maxLon = lons.max() else {
+              let minLon = lons.min(), let maxLon = lons.max(),
+              screen.width > 0, screen.height > 0 else {
             return MKCoordinateRegion(center: cluster.coordinate,
-                                      latitudinalMeters: KaartStijl.zoomOpBankje,
-                                      longitudinalMeters: KaartStijl.zoomOpBankje)
+                                      latitudinalMeters: KaartStijl.clusterMaxInzoomMeters,
+                                      longitudinalMeters: KaartStijl.clusterMaxInzoomMeters)
         }
-        // Niet verder inzoomen dan nodig is om ze los te krijgen.
-        let minSpan = KaartStijl.clusterUitBijMeters * 0.35 / 111_000
-        let latSpan = max((maxLat - minLat) * KaartStijl.clusterZoomRuimte, minSpan)
-        let lonSpan = max((maxLon - minLon) * KaartStijl.clusterZoomRuimte, minSpan)
-        return MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2),
-            span: MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: lonSpan))
+        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2, longitude: (minLon + maxLon) / 2)
+        let cosLat = max(cos(center.latitude * .pi / 180), 0.01)
+        let aspect = Double(screen.width / screen.height)   // breedte gedeeld door hoogte van het scherm
+
+        // De hoogte van het scherm (in graden) moet de bankjes ruim omvatten, zowel in de hoogte als in de breedte.
+        let minHeight = KaartStijl.clusterMaxInzoomMeters / 111_000
+        let latSpan = max((maxLat - minLat) * KaartStijl.clusterZoomRuimte,
+                          (maxLon - minLon) * KaartStijl.clusterZoomRuimte * cosLat / aspect,
+                          minHeight)
+        let lonSpan = latSpan * aspect / cosLat
+        return MKCoordinateRegion(center: center,
+                                  span: MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: lonSpan))
     }
 }

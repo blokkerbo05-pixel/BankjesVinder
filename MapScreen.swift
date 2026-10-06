@@ -305,7 +305,7 @@ struct MapScreen: View {
     /// Tik op een cluster: zoom in tot de bankjes los staan.
     private func zoom(into cluster: BenchCluster) {
         withAnimation(.easeInOut(duration: 0.4)) {
-            position = .region(BenchClustering.zoomRegion(for: cluster))
+            position = .region(BenchClustering.zoomRegion(for: cluster, screen: UIScreen.main.bounds.size))
         }
     }
 
