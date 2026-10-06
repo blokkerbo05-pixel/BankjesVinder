@@ -14,6 +14,16 @@ final class BenchStore: ObservableObject {
     /// Wordt hoger telkens als er een foto is toegevoegd of gewijzigd, zodat schermen hem opnieuw laden.
     @Published private(set) var fotoVersie = 0
     var didAutoLoad = false
+    /// Open (aan): eigen bankjes én OpenStreetMap. Journey (uit): alleen eigen bankjes, geen OpenStreetMap-verzoeken.
+    @Published var toonAlle: Bool = UserDefaults.standard.object(forKey: "toonAlleBankjes") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(toonAlle, forKey: "toonAlleBankjes")
+            if !toonAlle {
+                pendingTiles = []   // niets meer ophalen
+                osmError = nil
+            }
+        }
+    }
 
     // Bankjes uit OpenStreetMap, per tegel (stukje kaart).
     private var osmByTile: [TileKey: [Bench]] = [:]
@@ -27,7 +37,7 @@ final class BenchStore: ObservableObject {
     private let cacheMaxAge: TimeInterval = 7 * 24 * 3600   // na een week opnieuw ophalen
     private let retryAfterFailure: TimeInterval = 20
 
-    var all: [Bench] { own + osm }
+    var all: [Bench] { toonAlle ? own + osm : own }
 
     private var fileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -123,7 +133,7 @@ final class BenchStore: ObservableObject {
 
     /// Staat er in dit kaartbeeld nog iets dat geladen kan worden? (Voor de knop "Laad bankjes in dit gebied".)
     func hasUnloadedTiles(in region: MKCoordinateRegion) -> Bool {
-        guard cacheLoaded, tileCount(in: region) <= KaartStijl.maxTegelsPerGebied,
+        guard toonAlle, cacheLoaded, tileCount(in: region) <= KaartStijl.maxTegelsPerGebied,
               let range = tileRange(for: region) else { return false }
         let now = Date()
         for x in range.x { for y in range.y where needsLoading(TileKey(x: x, y: y), now: now, ignoreCooldown: true) { return true } }
@@ -133,6 +143,7 @@ final class BenchStore: ObservableObject {
     /// Haalt de bankjes op voor het stuk kaart dat in beeld is. Dichtstbijzijnde tegels eerst.
     /// Is het gebied te groot (meer tegels dan KaartStijl.maxTegelsPerGebied), dan gebeurt er niets.
     func loadTiles(in region: MKCoordinateRegion, force: Bool = false) {
+        guard toonAlle else { return }   // Journey: geen OpenStreetMap
         // Wacht even tot de bewaarde tegels binnen zijn, anders halen we onnodig alles opnieuw op.
         guard cacheLoaded else {
             regionWaitingForCache = region

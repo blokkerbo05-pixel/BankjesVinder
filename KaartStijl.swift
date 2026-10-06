@@ -122,6 +122,15 @@ enum KaartStijl {
     static let logoGrootte: CGFloat          = 64   // logo bovenaan "Over"
     static let logoHoekVerhouding: CGFloat   = 0.2237   // afronding van een iPhone-icoon (deel van de breedte)
 
+    // MARK: Welkomstscherm en modus (Open / Journey)
+    static let welkomLogoGrootte: CGFloat    = 88
+    static let welkomKaartIcoonGrootte: CGFloat = 52
+    static let welkomKaartPadding: CGFloat   = 18
+    static let welkomStaffelSeconden: Double = 0.12   // wachttijd tussen het verschijnen van de onderdelen
+    static let openIcoon     = "map"
+    static let journeyIcoon  = "figure.walk"
+    static let leegKaartHoek: CGFloat        = hoekGroot
+
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
     static let tegelMaxDagen: Double = 30

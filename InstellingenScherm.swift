@@ -3,6 +3,7 @@ import SwiftUI
 /// De tab "Instellingen": thema, weergave en (later meer) opties.
 struct InstellingenScherm: View {
     @EnvironmentObject var thema: ThemaStore
+    @EnvironmentObject var store: BenchStore
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(Haptiek.sleutel) private var trillingenAan = true
     @AppStorage("themaUitgeklapt") private var themaUitgeklapt = false   // onthoudt of de themakeuze open of dicht staat
@@ -15,6 +16,8 @@ struct InstellingenScherm: View {
                     Text("Instellingen")
                         .font(.display(30))
                         .foregroundStyle(Color.ink)
+
+                    modusSectie
 
                     themaKaart
 
@@ -62,6 +65,36 @@ struct InstellingenScherm: View {
                 .padding(.top, 8)
                 .padding(.bottom, 24)
             }
+        }
+    }
+
+    /// Open (alle bankjes) of Journey (alleen eigen bankjes). De keuze en de schakelaar zijn dezelfde instelling.
+    private var modusSectie: some View {
+        sectie("Modus") {
+            VStack(spacing: 12) {
+                Picker("Modus", selection: $store.toonAlle.animation(Animaties.veer)) {
+                    Text("Open").tag(true)
+                    Text("Journey").tag(false)
+                }
+                .pickerStyle(.segmented)
+                Toggle(isOn: $store.toonAlle.animation(Animaties.veer)) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Alle bankjes tonen")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.ink)
+                        Text(store.toonAlle
+                             ? "Je ziet alle bankjes om je heen."
+                             : "Je ziet alleen de bankjes die jij toevoegt.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.muted)
+                    }
+                }
+                .tint(Color.leaf)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.surface))
+            .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, lineWidth: 1.5))
+            .onChange(of: store.toonAlle) { Haptiek.selectie() }
         }
     }
 

@@ -85,6 +85,13 @@ struct MapScreen: View {
                 refreshNearest()
             }
             .onChange(of: location.location) { refreshNearest() }
+            .onChange(of: store.toonAlle) {
+                // Terug naar Open: meteen de bankjes van dit kaartbeeld ophalen (als je niet te ver uitgezoomd bent).
+                if store.toonAlle, let region = visibleRegion,
+                   region.span.latitudeDelta * 111_000 < KaartStijl.autoLaadMaxMeters {
+                    store.loadTiles(in: region)
+                }
+            }
             .onChange(of: keur.data.records.count) {
                 recluster()
                 refreshNearest()
@@ -93,6 +100,11 @@ struct MapScreen: View {
             .onAppear {
                 recluster()
                 refreshNearest()
+            }
+
+            if !store.toonAlle && store.own.isEmpty {
+                leegKaartKaart
+                    .transition(Animaties.verschijn)
             }
 
             VStack(spacing: 10) {
@@ -142,16 +154,16 @@ struct MapScreen: View {
                     openSettings()
                 }
             }
-            if let error = store.osmError {
+            if store.toonAlle, let error = store.osmError {
                 banner(error, button: "Opnieuw") { retryLoading() }
             }
-            if store.isLoadingOSM {
+            if store.toonAlle && store.isLoadingOSM {
                 pill {
                     ProgressView()
                         .controlSize(.small)
                     Text("Bankjes laden…")
                 }
-            } else if let region = visibleRegion,
+            } else if store.toonAlle, let region = visibleRegion,
                       region.span.latitudeDelta * 111_000 >= KaartStijl.autoLaadMaxMeters {
                 // Ver uitgezoomd: niet automatisch laden, maar met een knop (of een melding als het gebied te groot is).
                 if store.tileCount(in: region) > KaartStijl.maxTegelsPerGebied {
@@ -195,6 +207,37 @@ struct MapScreen: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).fill(Color.woodSoft))
+    }
+
+    // MARK: - Lege kaart (Journey)
+
+    private var leegKaartKaart: some View {
+        VStack(spacing: 10) {
+            Image(systemName: KaartStijl.journeyIcoon)
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(Color.wood)
+            Text("Jouw kaart is nog leeg")
+                .font(.cardTitle(20))
+                .foregroundStyle(Color.ink)
+            Text("Hier verschijnen de bankjes die jij toevoegt. Voeg je eerste bankje toe om je verzameling te beginnen.")
+                .font(.system(size: 14))
+                .foregroundStyle(Color.muted)
+                .multilineTextAlignment(.center)
+            Button {
+                Haptiek.licht()
+                showAdd = true
+            } label: {
+                Text("Voeg je eerste bankje toe")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.appBg)
+                    .padding(.horizontal, 18).padding(.vertical, 10)
+                    .background(Capsule().fill(Color.wood))
+            }
+            .buttonStyle(.indruk)
+        }
+        .padding(20)
+        .frame(maxWidth: 300)
+        .zwevendeAchtergrond(RoundedRectangle(cornerRadius: KaartStijl.leegKaartHoek))
     }
 
     // MARK: - Knop: naar mijn locatie

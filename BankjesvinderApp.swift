@@ -28,6 +28,7 @@ struct ContentView: View {
     @StateObject private var verrassing = VerrassingStatus()
     @State private var tab = 0
     @State private var kaartGeheugen = KaartGeheugen()
+    @AppStorage("welkomGezien") private var welkomGezien = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -48,6 +49,15 @@ struct ContentView: View {
         // Bij een ander thema worden de schermen één keer opnieuw opgebouwd, zodat alle kleuren meegaan.
         .id(thema.themaID)
         .environmentObject(verrassing)
+        .overlay {
+            if !welkomGezien {
+                WelkomScherm { open in
+                    store.toonAlle = open
+                    withAnimation(Animaties.fade) { welkomGezien = true }
+                }
+                .transition(.opacity)
+            }
+        }
         .overlay { VerrassingOverlay(status: verrassing) }
         .onAppear {
             location.start()
@@ -56,7 +66,7 @@ struct ContentView: View {
         }
         .onReceive(location.$location) { newLocation in
             // Zodra we weten waar je bent: één keer de bankjes rond jou ophalen.
-            guard let newLocation, !store.didAutoLoad else { return }
+            guard let newLocation, store.toonAlle, !store.didAutoLoad else { return }
             store.didAutoLoad = true
             store.loadTiles(around: newLocation.coordinate)
         }

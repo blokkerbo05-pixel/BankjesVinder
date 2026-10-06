@@ -123,8 +123,10 @@ struct ListScreen: View {
     private var list: some View {
         if store.all.isEmpty {
             EmptyStateView(
-                title: store.isLoadingOSM ? "Bankjes zoeken…" : "Nog geen bankjes",
-                message: "Sta je locatie toe om de bankjes in de buurt te zien, of voeg zelf een bankje toe."
+                title: store.toonAlle && store.isLoadingOSM ? "Bankjes zoeken…" : "Nog geen bankjes",
+                message: store.toonAlle
+                    ? "Sta je locatie toe om de bankjes in de buurt te zien, of voeg zelf een bankje toe."
+                    : "Hier staan de bankjes die jij toevoegt. Voeg je eerste bankje toe via de kaart."
             )
         } else if rows.isEmpty {
             EmptyStateView(title: "Geen bankjes gevonden", message: "Probeer een andere zoekterm of zet een filter uit.")
