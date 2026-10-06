@@ -59,37 +59,80 @@ declare
   n int;
   g int;
   nodig int;
-  drempel numeric;
-  aandeel numeric;
-  procent int;
+  ai boolean;
+  bestaand text;
 begin
+  -- Is de eindbeoordeling al gestart of klaar? Dan verandert de status niet meer door extra of ingetrokken stemmen.
+  select status into bestaand from public.keur_status where bench_id = p_bench;
+  if bestaand in ('in_beoordeling', 'goedgekeurd', 'afgekeurd') then
+    return;
+  end if;
+
   select count(*), count(*) filter (where goed) into n, g from public.votes where bench_id = p_bench;
-  select stemmen_nodig, goedkeur_drempel into nodig, drempel from public.keur_instellingen where id = 1;
+  select stemmen_nodig, ai_beoordeling into nodig, ai from public.keur_instellingen where id = 1;
 
   if n = 0 then
     delete from public.keur_status where bench_id = p_bench;
     return;
   end if;
 
-  aandeel := g::numeric / n;
-  procent := round(aandeel * 100);
-
   insert into public.keur_status (bench_id, status, aantal_stemmen, aantal_goed, reden, updated_at)
-  values (
-    p_bench,
-    case when n < nodig then 'stemmen' when aandeel >= drempel then 'goedgekeurd' else 'afgekeurd' end,
-    n, g,
-    case when n < nodig then null
-         when aandeel >= drempel then procent || '% vond dit een goed bankje (' || g || ' van ' || n || ')'
-         else 'Slechts ' || procent || '% vond dit een goed bankje (' || g || ' van ' || n || ')' end,
-    now()
-  )
+  values (p_bench, case when n < nodig then 'stemmen' else 'in_beoordeling' end, n, g, null, now())
   on conflict (bench_id) do update set
     status = excluded.status,
     aantal_stemmen = excluded.aantal_stemmen,
     aantal_goed = excluded.aantal_goed,
-    reden = excluded.reden,
+    reden = null,
     updated_at = excluded.updated_at;
+
+  -- Genoeg stemmen en de AI staat uit: de database rondt zelf af met de rekenregel.
+  -- (Staat de AI aan, dan doet de Edge Function "beoordeel" dit.)
+  if n >= nodig and not ai then
+    perform public.eindbeoordeling_regel(p_bench);
+  end if;
+end;
+$$;
+
+-- De eindbeoordeling met de rekenregel (goed als minstens de drempel "goed" stemde).
+create or replace function public.eindbeoordeling_regel(p_bench text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  n int;
+  g int;
+  drempel numeric;
+  aandeel numeric;
+  procent int;
+  goed boolean;
+  tekst text;
+begin
+  select aantal_stemmen, aantal_goed into n, g
+    from public.keur_status where bench_id = p_bench and status = 'in_beoordeling';
+  if not found then
+    return;
+  end if;
+  select goedkeur_drempel into drempel from public.keur_instellingen where id = 1;
+
+  aandeel := g::numeric / n;
+  procent := round(aandeel * 100);
+  goed := aandeel >= drempel;
+  tekst := case when goed
+    then procent || '% vond dit een goed bankje (' || g || ' van ' || n || ')'
+    else 'Slechts ' || procent || '% vond dit een goed bankje (' || g || ' van ' || n || ')' end;
+
+  -- Goedgekeurd: de reden is voor iedereen te zien. Afgekeurd: alleen de maker ziet de reden (tabel keur_afwijzing).
+  update public.keur_status
+    set status = case when goed then 'goedgekeurd' else 'afgekeurd' end,
+        reden = case when goed then tekst else null end,
+        updated_at = now()
+    where bench_id = p_bench;
+  if not goed then
+    insert into public.keur_afwijzing (bench_id, reden) values (p_bench, tekst)
+    on conflict (bench_id) do update set reden = excluded.reden, updated_at = now();
+  end if;
 end;
 $$;
 
@@ -298,3 +341,43 @@ create policy "foto melden" on public.photo_reports for insert to authenticated
 grant select on public.bench_photos to anon, authenticated;
 grant insert, delete on public.bench_photos to authenticated;
 grant insert on public.photo_reports to authenticated;
+
+-- ============================================================
+--  FASE 5 en 6: eindbeoordeling (status "in_beoordeling"), AI-schakelaar en reden voor de maker
+-- ============================================================
+alter table public.keur_instellingen add column if not exists ai_beoordeling boolean not null default false;
+-- false = de database beslist met de rekenregel. true = de Edge Function "beoordeel" (met AI) beslist.
+
+alter table public.keur_status drop constraint if exists keur_status_status_check;
+alter table public.keur_status add constraint keur_status_status_check
+  check (status in ('stemmen', 'in_beoordeling', 'goedgekeurd', 'afgekeurd'));
+
+-- De reden van een afkeuring: alleen de maker van het bankje ziet die.
+create table if not exists public.keur_afwijzing (
+  bench_id text primary key,
+  reden text not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.keur_afwijzing enable row level security;
+
+drop policy if exists "afwijzing lezen door maker" on public.keur_afwijzing;
+create policy "afwijzing lezen door maker" on public.keur_afwijzing for select to authenticated
+  using (exists (select 1 from public.benches b where b.id::text = keur_afwijzing.bench_id and b.created_by = auth.uid()));
+
+grant select on public.keur_afwijzing to authenticated;
+
+-- Bankje verwijderd: ook de reden opruimen.
+create or replace function public.bench_opruimen()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from public.votes where bench_id = old.id::text;
+  delete from public.keur_status where bench_id = old.id::text;
+  delete from public.keur_afwijzing where bench_id = old.id::text;
+  delete from public.bench_photos where bench_id = old.id::text;
+  return null;
+end;
+$$;

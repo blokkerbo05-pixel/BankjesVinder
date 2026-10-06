@@ -1,6 +1,13 @@
 import Foundation
 import Supabase
 
+/// De instellingen uit de tabel `keur_instellingen`.
+private struct InstellingenRij: Codable {
+    var stemmenNodig: Int
+
+    enum CodingKeys: String, CodingKey { case stemmenNodig = "stemmen_nodig" }
+}
+
 /// Een stem zoals de database die kent (tabel `votes`).
 private struct StemRij: Codable {
     var benchID: String
@@ -63,11 +70,11 @@ final class KeurStore: ObservableObject {
         data.stemmen.contains { $0.benchID == sleutel(benchID) && $0.userID == data.userID }
     }
 
-    /// Is de eindbeoordeling gedaan? Dan hoeft er niet meer gestemd te worden.
+    /// Is de eindbeoordeling gestart of klaar? Dan hoeft er niet meer gestemd te worden.
     func isBeoordeeld(_ benchID: String) -> Bool {
         switch status(of: benchID) {
-        case .goedgekeurd, .afgekeurd: return true
-        case .nieuw, .stemmen, .inBeoordeling: return false
+        case .inBeoordeling, .goedgekeurd, .afgekeurd: return true
+        case .nieuw, .stemmen: return false
         }
     }
 
@@ -147,6 +154,8 @@ final class KeurStore: ObservableObject {
         let status: KeurStatus
         var oordeel: Oordeel?
         switch rij.status {
+        case "in_beoordeling":
+            status = .inBeoordeling
         case "goedgekeurd":
             status = .goedgekeurd
             oordeel = Oordeel(goedgekeurd: true, reden: rij.reden ?? "")
@@ -171,6 +180,9 @@ final class KeurStore: ObservableObject {
             }
             data.records = records
             serverAantal = aantallen
+
+            let instellingen: [InstellingenRij] = try await client.from("keur_instellingen").select().limit(1).execute().value
+            if let nodig = instellingen.first?.stemmenNodig { KeurInstellingen.vanServer = nodig }
 
             if account?.isIngelogd == true {
                 let eigen: [StemRij] = try await client.from("votes").select().execute().value

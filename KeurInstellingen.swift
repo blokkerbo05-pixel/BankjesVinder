@@ -19,8 +19,12 @@ enum KeurInstellingen {
     /// Zet op `false` als er meer gebruikers zijn.
     static let testModus = true
 
+    /// Het aantal stemmen zoals de online database het heeft ingesteld (tabel keur_instellingen).
+    /// Is dat (nog) niet bekend, bijvoorbeeld zonder internet, dan gelden de waarden hierboven.
+    static var vanServer: Int?
+
     /// Zoveel stemmen zijn echt nodig, rekening houdend met de testmodus.
-    static var stemmenNodig: Int { testModus ? 1 : aantalStemmenNodig }
+    static var stemmenNodig: Int { vanServer ?? (testModus ? 1 : aantalStemmenNodig) }
 
     /// Laat afgekeurde bankjes ook op de kaart zien? Zet op `false` om ze te verbergen.
     static let toonAfgekeurdeBankjes = true
