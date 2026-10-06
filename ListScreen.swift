@@ -5,7 +5,9 @@ import CoreLocation
 struct ListScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
+    @EnvironmentObject var favorieten: FavorietenStore
 
+    @State private var alleenFavorieten = false
     @State private var query = ""
     @State private var sort: SortMode = .nearby
     @State private var activeTags: Set<String> = []
@@ -23,6 +25,7 @@ struct ListScreen: View {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         let filtered = store.all.filter { bench in
             if !q.isEmpty && !"\(bench.name) \(bench.place) \(bench.note)".lowercased().contains(q) { return false }
+            if alleenFavorieten && !favorieten.isFavoriet(bench.id) { return false }
             return activeTags.allSatisfy { bench.tags.contains($0) }
         }
         let here = location.location
@@ -47,6 +50,9 @@ struct ListScreen: View {
                     header
                     searchRow
                     FlowLayout(spacing: 8) {
+                        Chip(title: "Favorieten", isOn: alleenFavorieten) {
+                            withAnimation(Animaties.veer) { alleenFavorieten.toggle() }
+                        }
                         ForEach(BenchTags.all, id: \.self) { tag in
                             Chip(title: tag, isOn: activeTags.contains(tag)) {
                                 if activeTags.contains(tag) { activeTags.remove(tag) } else { activeTags.insert(tag) }

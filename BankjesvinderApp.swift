@@ -6,6 +6,7 @@ struct BankjesvinderApp: App {
     @StateObject private var location = LocationManager()
     @StateObject private var keur = KeurStore()
     @StateObject private var thema = ThemaStore()
+    @StateObject private var favorieten = FavorietenStore()
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,7 @@ struct BankjesvinderApp: App {
                 .environmentObject(location)
                 .environmentObject(keur)
                 .environmentObject(thema)
+                .environmentObject(favorieten)
                 .tint(Color.leaf)
                 .preferredColorScheme(thema.weergave.colorScheme)
         }

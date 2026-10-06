@@ -7,6 +7,7 @@ struct MapScreen: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
+    @EnvironmentObject var favorieten: FavorietenStore
     let geheugen: KaartGeheugen
 
     init(geheugen: KaartGeheugen) {
@@ -27,11 +28,14 @@ struct MapScreen: View {
     @State private var clustered = ClusterResult()
     /// De 10 bankjes die het dichtst bij jou staan (alleen opnieuw berekend als dat nodig is).
     @State private var nearest: [Bench] = []
+    /// Aan: alleen favoriete bankjes op de kaart.
+    @State private var alleenFavorieten = false
 
     /// Bankjes met een plek op de kaart. Afgekeurde bankjes alleen als KeurInstellingen dat toestaat.
     private var mapped: [Bench] {
         store.all.filter { bench in
             guard bench.coordinate != nil else { return false }
+            if alleenFavorieten && !favorieten.isFavoriet(bench.id) { return false }
             return KeurInstellingen.toonAfgekeurdeBankjes || keur.status(of: bench.id) != .afgekeurd
         }
     }
@@ -47,7 +51,8 @@ struct MapScreen: View {
                         Button {
                             select(bench)
                         } label: {
-                            BenchPin(isOwn: bench.source == .eigen, isSelected: bench.id == selectedID)
+                            BenchPin(isOwn: bench.source == .eigen, isSelected: bench.id == selectedID,
+                                     isFavoriet: favorieten.isFavoriet(bench.id))
                         }
                         .buttonStyle(.indruk)
                     }
@@ -97,6 +102,15 @@ struct MapScreen: View {
                 refreshNearest()
             }
             .onChange(of: selectedID) { recluster() }
+            .onChange(of: alleenFavorieten) {
+                recluster()
+                refreshNearest()
+            }
+            .onChange(of: favorieten.aantal) {
+                guard alleenFavorieten else { return }
+                recluster()
+                refreshNearest()
+            }
             .onAppear {
                 recluster()
                 refreshNearest()
@@ -114,6 +128,7 @@ struct MapScreen: View {
                     Spacer()
                     VStack(spacing: 10) {
                         addButton
+                        favorietFilterButton
                         locationButton
                     }
                 }
@@ -238,6 +253,25 @@ struct MapScreen: View {
         .padding(20)
         .frame(maxWidth: 300)
         .zwevendeAchtergrond(RoundedRectangle(cornerRadius: KaartStijl.leegKaartHoek))
+    }
+
+    // MARK: - Knop: alleen favorieten
+
+    private var favorietFilterButton: some View {
+        Button {
+            Haptiek.licht()
+            withAnimation(Animaties.veer) { alleenFavorieten.toggle() }
+        } label: {
+            Image(systemName: alleenFavorieten ? KaartStijl.favorietIcoonGevuld : KaartStijl.favorietIcoon)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(KaartStijl.favorietKleur)
+                .frame(width: KaartStijl.favorietFilterKnopGrootte, height: KaartStijl.favorietFilterKnopGrootte)
+                .zwevendeAchtergrond(Circle())
+                .overlay(Circle().stroke(KaartStijl.favorietKleur, lineWidth: alleenFavorieten ? 1.5 : 0))
+        }
+        .buttonStyle(.indruk)
+        .accessibilityLabel("Alleen favorieten tonen")
+        .accessibilityAddTraits(alleenFavorieten ? .isSelected : [])
     }
 
     // MARK: - Knop: naar mijn locatie

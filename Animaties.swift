@@ -20,6 +20,9 @@ enum Animaties {
     static let indrukSeconden = 0.12
     static let indrukSchaal: CGFloat = 0.94    // zo klein wordt een knop als je hem indrukt
     static let verschijnSchaal: CGFloat = 0.6  // speldjes en clusters beginnen zo klein
+    static let hartRespons = 0.28          // het hartje dat opveert
+    static let hartDemping = 0.4
+    static let hartSchaal: CGFloat = 1.35  // zo groot wordt het hartje even
     static let wegvliegSeconden = KaartStijl.keurWegvliegSeconden
 
     // MARK: Beperk beweging
@@ -37,6 +40,10 @@ enum Animaties {
     /// Kaart die terugveert als je loslaat voor de drempel.
     static var terugveer: Animation? {
         beperkt ? nil : .spring(response: terugveerRespons, dampingFraction: terugveerDemping)
+    }
+    /// Hartje dat opveert bij aantikken.
+    static var hartVeer: Animation? {
+        beperkt ? nil : .spring(response: hartRespons, dampingFraction: hartDemping)
     }
     /// Kaart die wegvliegt.
     static var wegvlieg: Animation? {

@@ -117,6 +117,7 @@ struct AddBenchButton: View {
 struct BenchPin: View {
     let isOwn: Bool
     let isSelected: Bool
+    var isFavoriet = false
     @State private var getoond = false
     var body: some View {
         let size = isSelected ? KaartStijl.geselecteerdeStipGrootte : KaartStijl.stipGrootte
@@ -129,6 +130,14 @@ struct BenchPin: View {
             Image(systemName: KaartStijl.bankjeIcoon)
                 .font(.system(size: isSelected ? KaartStijl.geselecteerdIcoonGrootte : KaartStijl.icoonGrootte, weight: .bold))
                 .foregroundStyle(KaartStijl.icoonKleur)
+            if isFavoriet {
+                Image(systemName: KaartStijl.favorietIcoonGevuld)
+                    .font(.system(size: KaartStijl.favorietPinIcoon, weight: .bold))
+                    .foregroundStyle(KaartStijl.favorietKleur)
+                    .frame(width: KaartStijl.favorietPinGrootte, height: KaartStijl.favorietPinGrootte)
+                    .background(Circle().fill(KaartStijl.randKleur))
+                    .offset(x: size / 2.4, y: -size / 2.4)
+            }
         }
         // Veert op bij selecteren en groeit zacht in als het speldje voor het eerst verschijnt.
         .animation(Animaties.opveer, value: isSelected)
@@ -183,6 +192,7 @@ enum MapsOpener {
 struct BenchCard: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var keur: KeurStore
+    @EnvironmentObject var favorieten: FavorietenStore
     let bench: Bench
     let distance: CLLocationDistance?
     @State private var confirmDelete = false
@@ -212,6 +222,7 @@ struct BenchCard: View {
                 }
                 Spacer(minLength: 0)
                 if bench.rating > 0 { Stars(rating: bench.rating) }
+                FavorietHartje(isAan: favorieten.isFavoriet(bench.id)) { favorieten.wissel(bench.id) }
             }
 
             if !bench.tags.isEmpty {
@@ -362,5 +373,32 @@ struct EmptyStateView: View {
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity)
         .overlay(RoundedRectangle(cornerRadius: KaartStijl.hoekMiddel).stroke(Color.line, style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
+    }
+}
+
+/// Hartje-knop: gevuld = favoriet. Veert even op bij aantikken.
+struct FavorietHartje: View {
+    let isAan: Bool
+    let actie: () -> Void
+    @State private var puls = false
+
+    var body: some View {
+        Button {
+            Haptiek.licht()
+            actie()
+            withAnimation(Animaties.hartVeer) { puls = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(Animaties.hartVeer) { puls = false }
+            }
+        } label: {
+            Image(systemName: isAan ? KaartStijl.favorietIcoonGevuld : KaartStijl.favorietIcoon)
+                .font(.system(size: KaartStijl.favorietIcoonGrootte, weight: .semibold))
+                .foregroundStyle(isAan ? KaartStijl.favorietKleur : Color.muted)
+                .scaleEffect(puls ? Animaties.hartSchaal : 1)
+                .frame(width: KaartStijl.favorietKnopGrootte, height: KaartStijl.favorietKnopGrootte)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isAan ? "Verwijder uit favorieten" : "Voeg toe aan favorieten")
     }
 }

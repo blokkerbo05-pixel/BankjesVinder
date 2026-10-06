@@ -131,6 +131,16 @@ enum KaartStijl {
     static let journeyIcoon  = "figure.walk"
     static let leegKaartHoek: CGFloat        = hoekGroot
 
+    // MARK: Favorieten (hartje)
+    static let favorietKleur      = Color.danger
+    static let favorietIcoon      = "heart"
+    static let favorietIcoonGevuld = "heart.fill"
+    static let favorietKnopGrootte: CGFloat = 36   // hartje op het detailkaartje
+    static let favorietIcoonGrootte: CGFloat = 18
+    static let favorietPinGrootte: CGFloat  = 15   // rond hartje op de stip
+    static let favorietPinIcoon: CGFloat    = 8
+    static let favorietFilterKnopGrootte: CGFloat = 40   // filterknopje op de kaart
+
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
     static let tegelMaxDagen: Double = 30
