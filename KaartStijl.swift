@@ -73,6 +73,20 @@ enum KaartStijl {
     static let dichtbijKopGrootte: CGFloat      = 11   // het woord DICHTBIJ
     static let dichtbijPaneelPadding: CGFloat   = 6    // ruimte boven en onder in het paneel
 
+    // MARK: Keuren (de Keuren-tab met kaarten)
+    static let keurKaartAchtergrond = Color.surface
+    static let keurKaartRand        = Color.line
+    static let keurKaartHoek: CGFloat           = 22
+    static let keurAfbeeldingHoogte: CGFloat    = 240   // kaartbeeld of foto bovenaan de kaart
+    static let keurAfbeeldingPlaceholder        = Color.leafSoft
+    static let keurGoedKleur                    = Color.leaf     // "Goed bankje"
+    static let keurSlechtKleur                  = Color.danger   // "Geen goed bankje"
+    static let keurOngedaanKleur                = Color.muted    // knop "ongedaan maken"
+    static let keurKnopGrootte: CGFloat         = 62    // de grote ronde knoppen (goed / niet goed)
+    static let keurKleineKnopGrootte: CGFloat   = 46    // de kleine knop (ongedaan maken)
+    static let keurMaxKaarten                   = 25    // zoveel bankjes tegelijk in de stapel
+    static let keurKaartenZichtbaar             = 3     // zoveel kaarten zie je (de rest zit eronder)
+
     // MARK: Opslag op de iPhone (houdt de app snel)
     /// Bewaarde tegels ouder dan dit aantal dagen worden bij het starten verwijderd.
     static let tegelMaxDagen: Double = 30
