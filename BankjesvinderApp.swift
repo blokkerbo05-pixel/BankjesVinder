@@ -21,6 +21,7 @@ struct ContentView: View {
     @EnvironmentObject var store: BenchStore
     @EnvironmentObject var location: LocationManager
     @EnvironmentObject var keur: KeurStore
+    @StateObject private var verrassing = VerrassingStatus()
 
     var body: some View {
         TabView {
@@ -31,6 +32,8 @@ struct ContentView: View {
             KeurScherm()
                 .tabItem { Label("Keuren", systemImage: "hand.thumbsup") }
         }
+        .environmentObject(verrassing)
+        .overlay { VerrassingOverlay(status: verrassing) }
         .onAppear {
             location.start()
             // De eindbeoordeling heeft het hele bankje nodig, niet alleen zijn ID.

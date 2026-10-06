@@ -76,6 +76,7 @@ struct ListScreen: View {
                 Text("Bankjesvinder")
                     .font(.display(36))
                     .foregroundStyle(Color.ink)
+                    .verrassing()
                 Slats()
             }
             Spacer()
