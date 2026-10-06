@@ -15,6 +15,7 @@ enum KaartStijl {
     static let icoonKleur       = Color.surface  // bankje-icoontje in het stipje
     static let knopAchtergrond  = Color.surface  // achtergrond van de knop "naar mijn locatie"
     static let knopIcoonKleur   = Color.leaf     // pijltje in die knop
+    static let toevoegKnopKleur = Color.wood     // plusje (en dun randje) van de knop "bankje toevoegen"
 
     // MARK: Groottes (in punten)
     static let stipGrootte: CGFloat              = 28
@@ -23,6 +24,7 @@ enum KaartStijl {
     static let geselecteerdIcoonGrootte: CGFloat = 17
     static let randDikte: CGFloat                = 2.5
     static let locatieKnopGrootte: CGFloat       = 48
+    static let toevoegKnopGrootte: CGFloat       = 40   // rond plusknopje boven de locatieknop
 
     // MARK: Clusters (bolletje met een getal als bankjes dicht bij elkaar staan)
     static let clusterKleur      = bankjeKleur   // zelfde groen als een bankje
@@ -82,6 +84,7 @@ enum KaartStijl {
     // MARK: Stijl
     static let bankjeIcoon = "chair.lounge.fill"   // SF Symbol-naam
     static let locatieIcoon = "location.fill"
+    static let toevoegIcoon = "plus"
     static let schaduw: Double = 0.25              // 0 = geen schaduw, 1 = heel donker
     /// Het kaarttype. Alternatieven: .standard, .imagery (satelliet), .hybrid
     static var kaartType: MapStyle { .standard(pointsOfInterest: .excludingAll) }

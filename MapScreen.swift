@@ -80,7 +80,10 @@ struct MapScreen: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    locationButton
+                    VStack(spacing: 10) {
+                        addButton
+                        locationButton
+                    }
                 }
                 .padding(.horizontal, 16)
                 bottomPanel
@@ -190,6 +193,22 @@ struct MapScreen: View {
         .accessibilityLabel("Naar mijn locatie")
     }
 
+    // MARK: - Knop: bankje toevoegen
+
+    private var addButton: some View {
+        Button { showAdd = true } label: {
+            Image(systemName: KaartStijl.toevoegIcoon)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(KaartStijl.toevoegKnopKleur)
+                .frame(width: KaartStijl.toevoegKnopGrootte, height: KaartStijl.toevoegKnopGrootte)
+                .background(Circle().fill(KaartStijl.knopAchtergrond))
+                .overlay(Circle().stroke(KaartStijl.toevoegKnopKleur, lineWidth: 1.5))
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Bankje toevoegen")
+    }
+
     private func centerOnUser() {
         if location.isDenied {
             showLocationHelp = true
@@ -255,9 +274,7 @@ struct MapScreen: View {
                     .padding(.vertical, KaartStijl.dichtbijPaneelPadding)
                     .background(KaartStijl.dichtbijPaneelAchtergrond)
                 }
-                AddBenchButton { showAdd = true }
             }
-            .padding(.bottom, 12)
         }
     }
 
