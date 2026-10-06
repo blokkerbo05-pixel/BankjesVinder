@@ -8,6 +8,10 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    exactVersion: 2.55.3
 targets:
   Bankjesvinder:
     type: application
@@ -19,6 +23,7 @@ targets:
           - ".github/**"
           - "build/**"
           - "Payload/**"
+          - "supabase/**"
           - "Bankjesvinder.xcodeproj/**"
           - "*.yml"
           - "*.md"
@@ -26,6 +31,8 @@ targets:
           - "*.png"
           - "*.ipa"
           - "Info.plist"
+    dependencies:
+      - package: Supabase
     scheme: {}
     settings:
       base:
