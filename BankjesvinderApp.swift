@@ -28,10 +28,10 @@ struct ContentView: View {
         }
         .onAppear { location.start() }
         .onReceive(location.$location) { newLocation in
-            // Zodra we weten waar je bent: één keer de bankjes in de buurt ophalen.
+            // Zodra we weten waar je bent: één keer de bankjes rond jou ophalen.
             guard let newLocation, !store.didAutoLoad else { return }
             store.didAutoLoad = true
-            Task { await store.loadOSM(near: newLocation.coordinate) }
+            store.loadTiles(around: newLocation.coordinate)
         }
     }
 }

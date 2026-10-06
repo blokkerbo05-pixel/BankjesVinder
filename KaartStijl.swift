@@ -37,6 +37,11 @@ enum KaartStijl {
     /// Hoe ruim er wordt ingezoomd als je op een cluster tikt (groter = minder ver inzoomen).
     static let clusterZoomRuimte: Double = 2.2
 
+    // MARK: Laad-indicator (klein pilletje bovenaan terwijl bankjes laden)
+    static let laadAchtergrond  = Color.surface
+    static let laadTekstKleur   = Color.ink
+    static let laadTekstGrootte: CGFloat = 13
+
     // MARK: Stijl
     static let bankjeIcoon = "chair.lounge.fill"   // SF Symbol-naam
     static let locatieIcoon = "location.fill"

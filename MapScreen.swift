@@ -29,15 +29,6 @@ struct MapScreen: View {
             .prefix(10))
     }
 
-    /// Laat de knop "Zoek hier" zien als je de kaart een eind hebt verschoven.
-    private var showSearchHere: Bool {
-        guard let mapCenter else { return false }
-        guard let last = store.lastOSMCenter else { return true }
-        let a = CLLocation(latitude: mapCenter.latitude, longitude: mapCenter.longitude)
-        let b = CLLocation(latitude: last.latitude, longitude: last.longitude)
-        return a.distance(from: b) > 700
-    }
-
     var body: some View {
         ZStack {
             Map(position: $position) {
@@ -74,6 +65,7 @@ struct MapScreen: View {
                 mapCenter = context.region.center
                 visibleRegion = context.region
                 recluster()
+                store.loadTiles(in: context.region)
             }
             .onChange(of: store.all.count) { recluster() }
             .onChange(of: selectedID) { recluster() }
@@ -123,26 +115,19 @@ struct MapScreen: View {
                 }
             }
             if let error = store.osmError {
-                banner(error, button: "Opnieuw") { searchHere() }
+                banner(error, button: "Opnieuw") { retryLoading() }
             }
             if store.isLoadingOSM {
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ProgressView()
-                    Text("Bankjes zoeken…").font(.system(size: 15, weight: .bold))
+                        .controlSize(.small)
+                    Text("Bankjes laden…")
+                        .font(.system(size: KaartStijl.laadTekstGrootte, weight: .semibold))
+                        .foregroundStyle(KaartStijl.laadTekstKleur)
                 }
-                .padding(.horizontal, 16).padding(.vertical, 10)
-                .background(Capsule().fill(Color.surface))
-                .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
-            } else if showSearchHere {
-                Button { searchHere() } label: {
-                    Label("Zoek hier naar bankjes", systemImage: "magnifyingglass")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.ink)
-                        .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(Capsule().fill(Color.surface))
-                        .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
-                }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Capsule().fill(KaartStijl.laadAchtergrond))
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
             }
         }
         .padding(.top, 8)
@@ -302,8 +287,9 @@ struct MapScreen: View {
         }
     }
 
-    private func searchHere() {
-        guard let center = mapCenter ?? location.location?.coordinate else { return }
-        Task { await store.loadOSM(near: center) }
+    /// Na een fout: probeer de bankjes van het beeld opnieuw te laden.
+    private func retryLoading() {
+        guard let region = visibleRegion else { return }
+        store.loadTiles(in: region, force: true)
     }
 }
