@@ -8,6 +8,17 @@ private struct InstellingenRij: Codable {
     enum CodingKeys: String, CodingKey { case stemmenNodig = "stemmen_nodig" }
 }
 
+/// De reden van een afkeuring (alleen zichtbaar voor de maker; tabel `keur_afwijzing`).
+private struct AfwijzingRij: Codable {
+    var benchID: String
+    var reden: String
+
+    enum CodingKeys: String, CodingKey {
+        case reden
+        case benchID = "bench_id"
+    }
+}
+
 /// Een stem zoals de database die kent (tabel `votes`).
 private struct StemRij: Codable {
     var benchID: String
@@ -185,17 +196,44 @@ final class KeurStore: ObservableObject {
             if let nodig = instellingen.first?.stemmenNodig { KeurInstellingen.vanServer = nodig }
 
             if account?.isIngelogd == true {
+                await haalAfwijzingenOp()
                 let eigen: [StemRij] = try await client.from("votes").select().execute().value
                 data.stemmen = eigen.map { Stem(benchID: $0.benchID, userID: data.userID, goed: $0.goed, date: Date()) }
             }
             opslag.bewaar(data)
+
+            // Bankjes die op de eindbeoordeling wachten (bijv. de app werd gesloten): die alsnog starten.
+            for (key, record) in records.prefix(200) where record.status == .inBeoordeling {
+                await laatBeoordelen(key)
+            }
         } catch {
             // Stil: de bewaarde gegevens blijven staan.
         }
     }
 
+    /// Haalt de redenen van afkeuringen op. Je krijgt er alleen die van je eigen bankjes.
+    private func haalAfwijzingenOp() async {
+        guard let rijen: [AfwijzingRij] = try? await client.from("keur_afwijzing").select().execute().value else { return }
+        for rij in rijen {
+            guard var record = data.records[rij.benchID], record.status == .afgekeurd else { continue }
+            record.oordeel = Oordeel(goedgekeurd: false, reden: rij.reden)
+            data.records[rij.benchID] = record
+        }
+    }
+
+    /// Vraagt de Edge Function "beoordeel" om de eindbeoordeling te doen (AI, of de rekenregel zonder sleutel).
+    /// Staat de AI-schakelaar uit, dan heeft de database het al afgerond en gebeurt hier niets.
+    private func laatBeoordelen(_ key: String) async {
+        do {
+            try await client.functions.invoke("beoordeel", options: FunctionInvokeOptions(body: ["bench_id": key]))
+        } catch {
+            return   // de functie is er niet of faalt: bij de volgende keer proberen we het opnieuw
+        }
+        await ververs(bankje: key, beoordeel: false)
+    }
+
     /// Haalt alleen de status van één bankje op (na een stem).
-    private func ververs(bankje key: String) async {
+    private func ververs(bankje key: String, beoordeel: Bool = true) async {
         guard let rijen: [StatusRij] = try? await client.from("keur_status").select()
             .eq("bench_id", value: key).execute().value else { return }
         if let rij = rijen.first {
@@ -205,6 +243,8 @@ final class KeurStore: ObservableObject {
             data.records[key] = nil
             serverAantal[key] = nil
         }
+        await haalAfwijzingenOp()
         opslag.bewaar(data)
+        if beoordeel, data.records[key]?.status == .inBeoordeling { await laatBeoordelen(key) }
     }
 }
